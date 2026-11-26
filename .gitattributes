@@ -1,0 +1,3 @@
+*.tess text eol=lf
+*.fa text eol=lf
+/ooc/tesseract.og text eol=lf

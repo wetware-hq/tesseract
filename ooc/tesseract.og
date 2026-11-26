@@ -1,0 +1,178 @@
+::meta
+title: tesseract route and file index
+version: 1
+updated: 2026-11-26
+domain: tesseract|dna-assembly|type-iis|oligopool|chromosome|machine-compiler
+scope: all
+governs: docs/follow-agent-contract.md
+checksum: sha256:e7a115bc94d6a022d02b7fd271091603259e5978baf4afb4c3d7961945bebc27
+::end
+
+::schema
+node-types: [stage, skill, system, plan, assertion, meta]
+edge-types: [requires, precedes, composes, refuses]
+scope-levels: [all, compiler, composer, orderer, committer]
+::end
+
+::index
+# id | type | scope | conf | keywords
+banner | meta | all | 1.00 | academic, not-protocol, not-performed
+contract | stage | all | 1.00 | .tess, tess1, plan-bytes, machine, compose, refusals, omega1, T1-T10
+pins | stage | all | 1.00 | romerolab-omega@160be2f7, sc2.0-synIII, potapov-2018, pryor-2020, palluk-2018, web@2f7f63f6, helix@1b290404
+runlength | stage | all | 0.50 | tiers-not-bases, depth-is-risk, fidelity-table-would-cut-tiers, hypothesis
+compile | skill | compiler | 1.00 | part-count, fewest-tiers, mid-runlength-slack, backtracking, never-edits-target
+compose | skill | composer | 1.00 | normative, overlap-by-overhang, target-root, exact-or-refuse
+order | system | orderer | 1.00 | parts-verbatim, order_nt, no-adaptors, re-check-delivery
+commit | system | committer | 1.00 | plan-root, dna-page-by-subject, salted-sequence-root, scratch-plan, chain-null
+tess1:d76ec2bdbc31afaa9b9422565c011f2db890391dfe2f53d871036a0fab7ee9c3 | plan | all | 1.00 | epi-12k, m0-chip, 83-parts, 2-tiers, 10-pots, bsai
+tess1:a79d3ea2f0ed7336536a6522d45cfbd345d71803edc6243584dffde3a68668a6 | plan | all | 1.00 | epi-12k, m1-column, 55-parts, 2-tiers, 7-pots
+tess1:2d75cf885bc60cf8705624b4ac409c796d4f8175cacd0807d99e85b7f4459e38 | plan | all | 1.00 | epi-12k, m2-tdt, 10-parts, 1-tier, 1-pot
+tess1:87626317b6358aaacde6dda2e55e3fdd89e616cefc4f063c69522ae7a6932a12 | plan | all | 1.00 | epi-12k, m3-bet, 1-part, 0-tiers, no-enzyme-used
+tess1:6f03c5cf78e0e187790921d7df924205e5319c9d5804312edcf2dc2417ff257c | plan | all | 1.00 | site-2k, m1-column, bsmbi-fallthrough, forbidden-site-avoided
+stop | assertion | all | 1.00 | composed, length-checked, sufficient
+::end
+
+::node [id=banner type=meta confidence=1.00 scope=all updated=2026-11-26]
+::dense
+academic|plan-not-protocol|not-performed|no-machine-claim
+::end
+::warning
+Read DISCLAIMER before any node.
+::end
+::edges
+->[:precedes] contract
+::end
+::end
+
+::node [id=contract type=stage confidence=1.00 scope=all updated=2026-11-26]
+::dense
+target|machine|part|pot|junction|plan-bytes-canonical|compose-exact|omega1|T1-T10
+::end
+::full
+Load docs/follow-agent-contract.md.
+::end
+::edges
+->[:requires] docs/follow-agent-contract.md
+->[:requires] tesseract.md
+->[:precedes] pins
+->[:precedes] compile
+->[:precedes] compose
+->[:precedes] runlength
+->[:refuses] bad_base
+->[:refuses] bad_length
+->[:refuses] bad_machine
+->[:refuses] bad_floor
+->[:refuses] bad_plan
+->[:refuses] bad_junction
+->[:refuses] target_mismatch
+->[:refuses] junction_mismatch
+::end
+::end
+
+::node [id=pins type=stage confidence=1.00 scope=all updated=2026-11-26]
+::dense
+omega=romerolab@160be2f7-gpl3-never-vendored|fidelity=potapov-2018|pryor-2020|synthesis=kosuri-2014|palluk-2018|chromosome=richardson-2017|parent=web@2f7f63f6|up=helix@1b290404
+::end
+::full
+Load docs/pin-sources.md and tesseract.json sources.
+::end
+::edges
+->[:requires] docs/pin-sources.md
+->[:requires] tesseract.json
+->[:precedes] compile
+::end
+::end
+
+::node [id=runlength type=stage confidence=0.50 scope=all updated=2026-11-26]
+::dense
+runlength-buys-tiers|depth-is-risk|slack-required|fidelity-data-would-cut-tiers|hypothesis-only
+::end
+::full
+Load docs/vary-runlength.md; nothing here is evidence.
+::end
+::edges
+->[:requires] docs/vary-runlength.md
+::end
+::end
+
+::node [id=compile type=skill confidence=1.00 scope=compiler updated=2026-11-26]
+::dense
+enzyme-by-absence|parts=mid-runlength|fewest-tiers|omega1-backtracking|never-edits|deterministic-root
+::end
+::full
+Load skills/compile-chromosome.md; run ref/tess.py compile.
+::end
+::edges
+->[:requires] skills/compile-chromosome.md
+->[:requires] ref/tess.py
+->[:precedes] compose
+->[:refuses] forbidden_site
+->[:refuses] no_junction
+->[:refuses] above_ceiling
+->[:refuses] below_floor
+->[:refuses] small_episome
+->[:refuses] pool_overflow
+->[:refuses] homopolymer
+->[:refuses] gc_window
+->[:refuses] exists
+::end
+::end
+
+::node [id=compose type=skill confidence=1.00 scope=composer updated=2026-11-26]
+::dense
+canonical-bytes-first|overlap-by-one-overhang|orthogonal-in-pot|sha256-target-root|no-partial-output
+::end
+::full
+Load skills/compose-plan.md; run ref/tess.py compose or check.
+::end
+::edges
+->[:requires] skills/compose-plan.md
+->[:requires] ref/tess.py
+->[:composes] tess1:d76ec2bdbc31afaa9b9422565c011f2db890391dfe2f53d871036a0fab7ee9c3
+->[:precedes] order
+->[:precedes] commit
+->[:refuses] target_mismatch
+->[:refuses] junction_mismatch
+->[:refuses] bad_plan
+::end
+::end
+
+::node [id=order type=system confidence=1.00 scope=orderer updated=2026-11-26]
+::dense
+compose-first|parts-verbatim|order_nt=nt+k(parts-1)|no-vector-no-primer|re-check-delivery
+::end
+::full
+Load systems/order-pool.md; run ref/tess.py order.
+::end
+::edges
+->[:requires] systems/order-pool.md
+->[:precedes] commit
+->[:refuses] target_mismatch
+::end
+::end
+
+::node [id=commit type=system confidence=1.00 scope=committer updated=2026-11-26]
+::dense
+plan-root=sha256(canonical)|attach-by-dna-subject|length-checkable|sequence-root-salted|scratch-only|chain-null
+::end
+::full
+Load systems/commit-plan.md; helix dna: pages carry a plan claim as a hypothesis.
+::end
+::edges
+->[:requires] systems/commit-plan.md
+->[:requires] tesseract.json
+->[:precedes] stop
+->[:refuses] target_mismatch
+::end
+::end
+
+::node [id=stop type=assertion confidence=1.00 scope=all updated=2026-11-26]
+::dense
+plan-composed|length-agrees|machine-named|sufficient
+::end
+::full
+Stop: the plan composes to its target and the question is answered.
+::end
+::edges
+::end
+::end

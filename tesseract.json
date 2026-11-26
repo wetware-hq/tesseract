@@ -1,0 +1,314 @@
+{
+  "format": "tess1",
+  "extension": ".tess",
+  "media_type": "application/vnd.tesseract+json",
+  "fileformat": "tesseract.md",
+  "spec": "docs/follow-agent-contract.md",
+  "reference": "ref/tess.py",
+  "chain": null,
+  "sources": {
+    "omega": {
+      "url": "https://github.com/RomeroLab/omega",
+      "commit": "160be2f7292676f64d54dad58902d5de557d9487",
+      "files": {
+        "code/omega.py": "4287c1d29f27989d0f9a6ef9523d5f4e7e43356bd016e04699bf1e502f30534b",
+        "code/junctions.py": "2a1438cd850f054522b7df654fe36a756e471075abe33689ba8eae15c9fa4293"
+      },
+      "licence": "GPL-3 (cited and pinned, never vendored)",
+      "use": "the junction-optimisation design omega1 is named after and deliberately simpler than"
+    },
+    "web": {
+      "url": "https://github.com/wetware-hq/web",
+      "commit": "2f7f63f6fa33907c677642f374103c2a473b857c",
+      "licence": "MIT",
+      "use": "parent specbase: dna1 sequences (contract \u00a79), pool1 oligo pools (\u00a710)"
+    },
+    "helix": {
+      "url": "https://github.com/wetware-hq/helix",
+      "commit": "1b290404790f76c9b9a9685188fd5281c1f0795a",
+      "licence": "MIT",
+      "use": "dna: chromosome pages a plan attaches to as a scratch claim, by subject; their sequence-root is salted (sha256(salt || bases)) and is not a plan target root (contract \u00a79)"
+    },
+    "bases": {
+      "url": "https://github.com/wetware-hq/bases",
+      "licence": "MIT",
+      "use": "ERC-721 chromosome tokens behind dna: pages; root = sha256(salt || bases), length fixed at mint"
+    }
+  },
+  "machines": [
+    {
+      "id": "m0-chip",
+      "label": "chip-synthesized oligo pool",
+      "floor": 100,
+      "ceil": 200,
+      "pool": 10,
+      "episome_floor": 1000,
+      "homopolymer_max": 5,
+      "gc": [
+        0.35,
+        0.65
+      ],
+      "enzymes": [
+        {
+          "name": "BsaI",
+          "site": "GGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "BsmBI",
+          "site": "CGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "SapI",
+          "site": "GCTCTTC",
+          "overhang": 3
+        }
+      ]
+    },
+    {
+      "id": "m1-column",
+      "label": "column phosphoramidite oligo",
+      "floor": 150,
+      "ceil": 300,
+      "pool": 10,
+      "episome_floor": 1000,
+      "homopolymer_max": 5,
+      "gc": [
+        0.35,
+        0.65
+      ],
+      "enzymes": [
+        {
+          "name": "BsaI",
+          "site": "GGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "BsmBI",
+          "site": "CGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "SapI",
+          "site": "GCTCTTC",
+          "overhang": 3
+        }
+      ]
+    },
+    {
+      "id": "m2-tdt",
+      "label": "controllable-polymerase strand (the bet, not a shipping machine)",
+      "floor": 200,
+      "ceil": 2000,
+      "pool": 10,
+      "episome_floor": 1000,
+      "homopolymer_max": 5,
+      "gc": [
+        0.35,
+        0.65
+      ],
+      "enzymes": [
+        {
+          "name": "BsaI",
+          "site": "GGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "BsmBI",
+          "site": "CGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "SapI",
+          "site": "GCTCTTC",
+          "overhang": 3
+        }
+      ]
+    },
+    {
+      "id": "m3-bet",
+      "label": "unbounded runlength (the limit of the bet)",
+      "floor": 1000,
+      "ceil": 50000,
+      "pool": 10,
+      "episome_floor": 1000,
+      "homopolymer_max": 5,
+      "gc": [
+        0.35,
+        0.65
+      ],
+      "enzymes": [
+        {
+          "name": "BsaI",
+          "site": "GGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "BsmBI",
+          "site": "CGTCTC",
+          "overhang": 4
+        },
+        {
+          "name": "SapI",
+          "site": "GCTCTTC",
+          "overhang": 3
+        }
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "name": "epi-12k",
+      "path": "samples/epi-12k.fa",
+      "nt": 12000,
+      "root": "560ca3068f3491d4b7686c337a68a32b67f6a5383cba0db18e6a49db31c62608",
+      "gc": 0.5012,
+      "longest_run": 3,
+      "seed": 0,
+      "note": "seeded episome, no machine enzyme site"
+    },
+    {
+      "name": "site-2k",
+      "path": "samples/site-2k.fa",
+      "nt": 2000,
+      "root": "1e5bf84b1a3ed793553c8e6e195375ec7ba9088a7e59e2dd008e9347ff28f925",
+      "gc": 0.5135,
+      "longest_run": 3,
+      "seed": 7,
+      "note": "seeded target with two BsaI sites spliced in"
+    }
+  ],
+  "plans": [
+    {
+      "name": "epi-12k.m0-chip",
+      "path": "samples/epi-12k.m0-chip.tess",
+      "format": "tess1",
+      "reference": "ref/tess.py",
+      "root": "d76ec2bdbc31afaa9b9422565c011f2db890391dfe2f53d871036a0fab7ee9c3",
+      "bytes": 20199,
+      "machine": "m0-chip",
+      "enzyme": "BsaI",
+      "floor": 100,
+      "target": {
+        "path": "samples/epi-12k.fa",
+        "root": "560ca3068f3491d4b7686c337a68a32b67f6a5383cba0db18e6a49db31c62608",
+        "nt": 12000
+      },
+      "shape": {
+        "order_nt": 12328,
+        "part_nt": [
+          111,
+          189
+        ],
+        "parts": 83,
+        "pots": 10,
+        "tiers": 2
+      }
+    },
+    {
+      "name": "epi-12k.m1-column",
+      "path": "samples/epi-12k.m1-column.tess",
+      "format": "tess1",
+      "reference": "ref/tess.py",
+      "root": "a79d3ea2f0ed7336536a6522d45cfbd345d71803edc6243584dffde3a68668a6",
+      "bytes": 17688,
+      "machine": "m1-column",
+      "enzyme": "BsaI",
+      "floor": 150,
+      "target": {
+        "path": "samples/epi-12k.fa",
+        "root": "560ca3068f3491d4b7686c337a68a32b67f6a5383cba0db18e6a49db31c62608",
+        "nt": 12000
+      },
+      "shape": {
+        "order_nt": 12216,
+        "part_nt": [
+          193,
+          256
+        ],
+        "parts": 55,
+        "pots": 7,
+        "tiers": 2
+      }
+    },
+    {
+      "name": "epi-12k.m2-tdt",
+      "path": "samples/epi-12k.m2-tdt.tess",
+      "format": "tess1",
+      "reference": "ref/tess.py",
+      "root": "2d75cf885bc60cf8705624b4ac409c796d4f8175cacd0807d99e85b7f4459e38",
+      "bytes": 13565,
+      "machine": "m2-tdt",
+      "enzyme": "BsaI",
+      "floor": 200,
+      "target": {
+        "path": "samples/epi-12k.fa",
+        "root": "560ca3068f3491d4b7686c337a68a32b67f6a5383cba0db18e6a49db31c62608",
+        "nt": 12000
+      },
+      "shape": {
+        "order_nt": 12036,
+        "part_nt": [
+          1171,
+          1219
+        ],
+        "parts": 10,
+        "pots": 1,
+        "tiers": 1
+      }
+    },
+    {
+      "name": "epi-12k.m3-bet",
+      "path": "samples/epi-12k.m3-bet.tess",
+      "format": "tess1",
+      "reference": "ref/tess.py",
+      "root": "87626317b6358aaacde6dda2e55e3fdd89e616cefc4f063c69522ae7a6932a12",
+      "bytes": 12749,
+      "machine": "m3-bet",
+      "enzyme": "BsaI",
+      "floor": 1000,
+      "target": {
+        "path": "samples/epi-12k.fa",
+        "root": "560ca3068f3491d4b7686c337a68a32b67f6a5383cba0db18e6a49db31c62608",
+        "nt": 12000
+      },
+      "shape": {
+        "order_nt": 12000,
+        "part_nt": [
+          12000,
+          12000
+        ],
+        "parts": 1,
+        "pots": 0,
+        "tiers": 0
+      }
+    },
+    {
+      "name": "site-2k.m1-column",
+      "path": "samples/site-2k.m1-column.tess",
+      "format": "tess1",
+      "reference": "ref/tess.py",
+      "root": "6f03c5cf78e0e187790921d7df924205e5319c9d5804312edcf2dc2417ff257c",
+      "bytes": 3506,
+      "machine": "m1-column",
+      "enzyme": "BsmBI",
+      "floor": 150,
+      "target": {
+        "path": "samples/site-2k.fa",
+        "root": "1e5bf84b1a3ed793553c8e6e195375ec7ba9088a7e59e2dd008e9347ff28f925",
+        "nt": 2000
+      },
+      "shape": {
+        "order_nt": 2036,
+        "part_nt": [
+          193,
+          214
+        ],
+        "parts": 10,
+        "pots": 1,
+        "tiers": 1
+      }
+    }
+  ]
+}
