@@ -224,5 +224,79 @@ class Pins(unittest.TestCase):
                 self.assertIn(tess.plan_root(plan), text)
 
 
+class PlanValidation(unittest.TestCase):
+    """compose is the auditor: a plan that reaches the target by illegal means is still refused."""
+
+    def plan(self):
+        return tess.read_plan(ROOT / "samples" / "site-2k.m1-column.tess")
+
+    def test_a_part_in_no_reaction_is_refused(self):
+        plan = self.plan()
+        spare = dict(plan["parts"][0], id="p99")
+        plan["parts"] = plan["parts"] + [spare]
+        with self.assertRaises(tess.Refusal) as cm:
+            tess.compose(plan)
+        self.assertEqual(cm.exception.code, "bad_plan")
+
+    def test_a_part_over_the_machine_ceiling_is_refused(self):
+        plan = self.plan()
+        tight = max(plan["floor"], max(p["nt"] for p in plan["parts"]) - 1)
+        plan["machine"] = dict(plan["machine"], ceil=tight)
+        with self.assertRaises(tess.Refusal) as cm:
+            tess.compose(plan)
+        self.assertEqual(cm.exception.code, "above_ceiling")
+
+    def test_a_part_under_the_floor_is_refused_unless_waived(self):
+        plan = self.plan()
+        plan["floor"] = max(p["nt"] for p in plan["parts"]) + 1
+        with self.assertRaises(tess.Refusal) as cm:
+            tess.compose(plan)
+        self.assertEqual(cm.exception.code, "below_floor")
+        plan["allow"] = dict(plan["allow"], small_fragments=True)
+        self.assertEqual(len(tess.compose(plan)), plan["target"]["nt"])
+
+    def test_missing_or_malformed_fields_are_refused_not_raised(self):
+        for key in ("machine", "floor", "allow", "shape", "target"):
+            plan = self.plan()
+            del plan[key]
+            with self.subTest(missing=key), self.assertRaises(tess.Refusal) as cm:
+                tess.compose(plan)
+            self.assertEqual(cm.exception.code, "bad_plan")
+        plan = self.plan()
+        del plan["target"]["nt"]
+        with self.assertRaises(tess.Refusal) as cm:
+            tess.compose(plan)
+        self.assertEqual(cm.exception.code, "bad_plan")
+        plan = self.plan()
+        del plan["shape"]["parts"]
+        with self.assertRaises(tess.Refusal) as cm:
+            tess.compose(plan)
+        self.assertEqual(cm.exception.code, "bad_plan")
+
+    def test_a_shape_that_undercounts_parts_is_refused(self):
+        plan = self.plan()
+        plan["shape"] = dict(plan["shape"], parts=plan["shape"]["parts"] + 1)
+        with self.assertRaises(tess.Refusal) as cm:
+            tess.compose(plan)
+        self.assertEqual(cm.exception.code, "bad_plan")
+
+    def test_canonical_refuses_values_json_cannot_hold(self):
+        plan = self.plan()
+        plan["target"] = dict(plan["target"], gc=float("nan"))
+        with self.assertRaises(tess.Refusal) as cm:
+            tess.canonical(plan)
+        self.assertEqual(cm.exception.code, "bad_plan")
+
+    def test_an_empty_target_has_no_shape_and_no_sample(self):
+        for nt in (0, -1):
+            with self.subTest(nt=nt):
+                with self.assertRaises(tess.Refusal) as cm:
+                    tess.project(nt, tess.machine("m1-column"))
+                self.assertEqual(cm.exception.code, "bad_length")
+                with self.assertRaises(tess.Refusal) as cm:
+                    tess.seeded(nt)
+                self.assertEqual(cm.exception.code, "bad_length")
+
+
 if __name__ == "__main__":
     unittest.main()

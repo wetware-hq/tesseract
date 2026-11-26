@@ -342,20 +342,42 @@ def compose(plan):
     """Plan -> the one sequence it builds (§4). Every junction is checked, nothing is guessed."""
     if not isinstance(plan, dict) or plan.get("tesseract") != 1:
         raise Refusal("bad_plan", "not a tess1 plan")
-    for key in ("enzyme", "parts", "pools", "root_part", "target"):
+    for key in ("machine", "enzyme", "floor", "allow", "parts", "pools", "root_part", "shape", "target"):
         if key not in plan:
             raise Refusal("bad_plan", f"missing {key}")
+    m = plan["machine"]
+    try:
+        check_machine(m)
+    except Refusal as err:
+        raise Refusal("bad_plan", str(err)) from None
+    floor = plan["floor"]
+    if not isinstance(floor, int) or isinstance(floor, bool) or floor < plan["enzyme"].get("overhang", 0) + 1:
+        raise Refusal("bad_floor", f"floor {floor}")
+    nt = plan["target"].get("nt")
+    if not isinstance(nt, int) or isinstance(nt, bool) or nt < 1:
+        raise Refusal("bad_plan", f"target nt {nt}")
+    if not isinstance(plan["target"].get("root"), str) or len(plan["target"]["root"]) != 64:
+        raise Refusal("bad_plan", "target root is not a sha256 digest")
+    for key in ("parts", "tiers", "pots", "part_nt", "order_nt"):
+        if key not in plan["shape"]:
+            raise Refusal("bad_plan", f"missing shape {key}")
     k = plan["enzyme"].get("overhang")
     if not isinstance(k, int) or k < 2:
         raise Refusal("bad_plan", f"overhang {k}")
-    built = {}
+    built, leaf = {}, set()
     for part in plan["parts"]:
         if part["id"] in built:
             raise Refusal("bad_plan", f"duplicate id {part['id']}")
         check_sequence(part.get("seq", ""))
         if len(part["seq"]) != part["nt"]:
             raise Refusal("bad_plan", f"{part['id']} says {part['nt']} nt, holds {len(part['seq'])}")
+        if len(part["seq"]) > m["ceil"]:
+            raise Refusal("above_ceiling", f"{part['id']} is {part['nt']} nt, ceiling {m['ceil']}")
+        if len(part["seq"]) < floor and not plan["allow"].get("small_fragments"):
+            raise Refusal("below_floor", f"{part['id']} is {part['nt']} nt, floor {floor}")
         built[part["id"]] = part["seq"]
+        leaf.add(part["id"])
+    used = set()
     for pot in plan["pools"]:
         kids = pot.get("children") or []
         if len(kids) < 2:
@@ -364,6 +386,12 @@ def compose(plan):
             raise Refusal("bad_plan", f"duplicate id {pot['id']}")
         if len(pot.get("junctions", [])) != len(kids) - 1:
             raise Refusal("bad_plan", f"{pot['id']} has {len(pot.get('junctions', []))} junctions for {len(kids)} parts")
+        if len(kids) > m["pool"]:
+            raise Refusal("pool_overflow", f"{pot['id']} joins {len(kids)} parts, pool {m['pool']}")
+        for kid in kids:
+            if kid in used:
+                raise Refusal("bad_plan", f"{kid} is joined twice")
+            used.add(kid)
         seq, present = built.get(kids[0]), []
         if seq is None:
             raise Refusal("bad_plan", f"{pot['id']} joins unbuilt {kids[0]}")
@@ -385,6 +413,11 @@ def compose(plan):
     out = built.get(plan["root_part"])
     if out is None:
         raise Refusal("bad_plan", f"no part {plan['root_part']}")
+    spare = sorted(set(built) - used - {plan["root_part"]})
+    if spare:
+        raise Refusal("bad_plan", f"{spare[0]} is in no reaction")
+    if len(leaf) != plan["shape"]["parts"]:
+        raise Refusal("bad_plan", f"shape says {plan['shape']['parts']} parts, plan holds {len(leaf)}")
     if seq_root(out) != plan["target"]["root"] or len(out) != plan["target"]["nt"]:
         raise Refusal("target_mismatch", f"{seq_root(out)} {len(out)} nt")
     return out
@@ -395,7 +428,11 @@ def compose(plan):
 
 def canonical(plan):
     """One byte form: RFC 8785-style JSON, keys sorted, no space, one trailing newline."""
-    return (json.dumps(plan, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode("ascii")
+    try:
+        text = json.dumps(plan, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
+    except ValueError as err:  # NaN and the infinities are not JSON numbers
+        raise Refusal("bad_plan", str(err)) from None
+    return (text + "\n").encode("ascii")
 
 
 def plan_root(plan):
@@ -433,6 +470,8 @@ def project(nt, m, floor=None):
     machines before it has a sequence in hand.
     """
     check_machine(m)
+    if not isinstance(nt, int) or isinstance(nt, bool) or nt < 1:
+        raise Refusal("bad_length", f"{nt} bases")
     k = m["enzymes"][0]["overhang"]
     floor = m["floor"] if floor is None else floor
     parts = part_count(nt, k, floor, m["ceil"], m["pool"])
@@ -450,6 +489,8 @@ def seeded(nt, seed=0, sites=()):
     Rejects a base that would make a run of 4 or complete a forbidden site, so the sequence is
     a stand-in for a synthesizable construct, not a biological one.
     """
+    if not isinstance(nt, int) or isinstance(nt, bool) or nt < 1:
+        raise Refusal("bad_length", f"{nt} bases")
     out = []
     i = 0
     while len(out) < nt:
