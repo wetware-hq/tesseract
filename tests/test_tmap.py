@@ -143,5 +143,14 @@ class Format(unittest.TestCase):
             self.assertEqual(ctx.exception.code, "bad_plan")
 
 
+    def test_missing_metadata_is_bad_plan(self):
+        for drop in (lambda p: p["parts"][0].pop("gc"), lambda p: p.pop("floor"), lambda p: p["enzyme"].pop("overhang")):
+            plan = tess.read_plan(ROOT / PINS["maps"][0]["plan"])
+            drop(plan)
+            with self.assertRaises(tess.Refusal) as ctx:
+                tmap.of_plan(plan)
+            self.assertEqual(ctx.exception.code, "bad_plan")
+
+
 if __name__ == "__main__":
     unittest.main()

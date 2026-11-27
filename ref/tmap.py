@@ -172,6 +172,15 @@ def digest(hexroot):
 
 def of_plan(plan):
     """A plan as named tensors: its roots, its parts' spans, its pot tree and its shape. No base (S4)."""
+    try:
+        return plan_map(plan)
+    except Refusal:
+        raise
+    except (KeyError, IndexError, TypeError, ValueError, struct.error) as err:
+        raise Refusal("bad_plan", f"{type(err).__name__}: {err}") from None
+
+
+def plan_map(plan):
     target = tess.compose(plan)  # a plan is mapped only if it composes to the target it names (§4)
     m, sh = plan["machine"], plan["shape"]
     parts, pools = plan["parts"], plan["pools"]
