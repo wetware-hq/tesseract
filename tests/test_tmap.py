@@ -97,10 +97,10 @@ class Format(unittest.TestCase):
         self.refused(self.blob + b"\0", "trailing_bytes")
         self.refused(self.blob, "kind_mismatch", "plan")
         self.refused(self.blob.replace(b"\x01a", b"\x01d", 1), "bad_order")
-        self.refused(self.blob[:15] + b"\x13" + self.blob[16:], "bad_dtype")
+        self.refused(self.blob[:15] + b"\x07" + self.blob[16:], "bad_dtype")
         self.refused(self.blob[:17] + struct.pack("<f", float("inf")) + self.blob[21:], "bad_value")
         for t, code in (({"x": (tmap.F32, -0.0)}, "bad_value"), ({"x": (tmap.U8, 256)}, "bad_value"),
-                        ({"X": (tmap.U8, 0)}, "bad_name"), ({"x": (19, 0)}, "bad_dtype"), ({}, "bad_count"),
+                        ({"X": (tmap.U8, 0)}, "bad_name"), ({"x": (7, 0)}, "bad_dtype"), ({}, "bad_count"),
                         ({"x": (tmap.U8, [[1], [2, 3]])}, "bad_shape")):
             with self.assertRaises(tess.Refusal) as ctx:
                 tmap.pack("probe", t)

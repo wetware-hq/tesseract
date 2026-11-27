@@ -95,7 +95,11 @@ def check(name, code, values):
             if v == 0.0 and str(v)[0] == "-":
                 raise Refusal("bad_value", f"{name}: negative zero")
             f = "<" + FMT[code]
-            if struct.unpack(f, struct.pack(f, v))[0] != v:
+            try:
+                fits = struct.unpack(f, struct.pack(f, v))[0] == v
+            except (OverflowError, struct.error):
+                fits = False
+            if not fits:
                 raise Refusal("bad_value", f"{name}: {v} is not a {NAMES[code]}")
         else:
             bits = 1 if code == 10 else 8 * SIZE[code]
