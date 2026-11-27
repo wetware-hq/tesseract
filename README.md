@@ -24,6 +24,7 @@ python ref/tess.py compile samples/epi-12k.fa out.tess --machine m0-chip      # 
 python ref/tess.py check   samples/epi-12k.m0-chip.tess --target samples/epi-12k.fa
 python ref/tess.py compose samples/epi-12k.m2-tdt.tess back.fa                # the tree -> the target
 python ref/tess.py order   samples/epi-12k.m0-chip.tess order.fa              # the parts to synthesize
+python ref/tmap.py map   samples/epi-12k.m0-chip.tess out.tmap   # the plan as named tensors (web §14)
 python -m unittest discover -s tests
 ```
 
@@ -72,10 +73,11 @@ A `dna:` page in [`wetware-hq/helix`](https://github.com/wetware-hq/helix) fixes
 | [`systems/order-pool.md`](systems/order-pool.md) | Turning a plan into an oligo order. |
 | [`systems/commit-plan.md`](systems/commit-plan.md) | Attaching a plan to a chromosome page, and on chain. |
 | [`ref/tess.py`](ref/tess.py) | The reference compiler (one valid plan) and `compose` (normative). |
+| [`ref/tmap.py`](ref/tmap.py) | The `tmap1` tensor map of a plan: its tree and roots as named tensors, contract §10. |
 | [`tesseract.json`](tesseract.json) | Machines, sample targets, plan roots and pinned sources. |
 | [`ooc/tesseract.og`](ooc/tesseract.og) | ObjectGraph index for traversal without prose. |
 | [`samples/`](samples) | A 12 kb target compiled at four machines, and a 2 kb target that forces the enzyme to fall through. |
-| [`tests/`](tests) | 25 checks: exactness, canonical bytes, junction orthogonality, machine projection, every refusal. |
+| [`tests/`](tests) | 44 checks: exactness, canonical bytes, junction orthogonality, machine projection, every refusal. |
 
 ## Licence
 

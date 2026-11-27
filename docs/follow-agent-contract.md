@@ -14,7 +14,7 @@ A **plan** is one DNA target compiled for one machine: a tree whose leaves are p
   "reads": ["DISCLAIMER", "tesseract.json", "ooc/tesseract.og"],
   "writes": [],
   "must": ["one canonical byte form", "compose is the only normative direction", "never change a base of the target", "match codes, not prose"],
-  "check": ["T1-T10"]
+  "check": ["T1-T11"]
 }
 ```
 
@@ -36,6 +36,7 @@ store = "*.tess"                 # canonical plan bytes, §2
 pins = "tesseract.json"          # machines, sample targets and plan roots
 index = "ooc/tesseract.og"       # ObjectGraph traversal index
 ref = "ref/tess.py"              # reference compose (normative) and compile (one valid plan)
+tensors = "ref/tmap.py"          # tmap1 tensor map of a plan, §10 (web contract §14)
 parent = "wetware-hq/web"        # dna1 sequences (web contract §9), pool1 oligos (§10)
 up = "wetware-hq/helix"          # dna: pages, scratch plan claims (§9 here)
 order = "systems/order-pool.md"
@@ -152,6 +153,8 @@ Agents match the code, never the prose (T5).
 | `junction_mismatch` | two children of a pot do not share their overhang |
 | `target_mismatch` | the composed sequence is not the target the plan names |
 | `root_mismatch` | a plan's root is not the one the caller expected |
+| `kind_mismatch` | a tensor map of another kind is given where a `plan` map is required (§10) |
+| `bad_map` | bytes are not one canonical `tmap1` map in the three plan dtypes (§10) |
 | `exists` | the output path is already present |
 
 A refusal never writes a partial plan or a partial sequence.
@@ -187,6 +190,7 @@ This is a combinatorial rule, not a fidelity model. Published ligation-fidelity 
 | **T7** | `project` agrees with `compile` on `parts`, `tiers` and `pots` for every target that compiles. |
 | **T8** | In each pot, the junctions are pairwise orthogonal members of `omega1`, and none repeats. |
 | **T9** | The same target, machine, floor and allowances give the same plan root. |
+| **T11** | Every sample plan's tensor map is pinned, holds no base, and re-serializes to the same bytes (§10). |
 | **T10** | No plan output contains a base the target does not have at that position; the compiler edits nothing. |
 
 ## §9 Up into helix
@@ -199,6 +203,37 @@ An agent proposing a build asserts a scratch `plan` claim on the `dna:` page, ca
 
 Downward, a target may be any `ACGT` sequence, including one that carries a `dna1` payload from web (web contract §9): a web written as DNA can be compiled for a machine like any other target. tesseract does not interpret the payload.
 
+## §10 Tensor map `tmap1`
+
+A plan has exactly one tensor map, in the universal form `wetware-hq/web` contract §14 defines: named tensors, each a `TensorProto` (TensorFlow `DataType`, shape, row-major `tensor_content`), under the kind `plan`, named by a **tensor root** `sha256` of the map's bytes. `ref/tmap.py` is the reference: standard library only, it writes web's bytes record for record in three dtypes (float32, uint8, uint32). Any other map is read with web's `ref/tensor.py`.
+
+| Tensor | dtype | Shape | What it holds |
+|---|---|---|---|
+| `allow` | uint8 | `[2]` | `small_episomes`, `small_fragments` as written in the plan |
+| `floor` | uint32 | `[]` | the floor part length in force |
+| `machine` | uint32 | `[5]` | `floor`, `ceil`, `pool`, `episome_floor`, `homopolymer_max` (§3) |
+| `overhang` | uint8 | `[]` | the chosen enzyme's overhang length `k` |
+| `part_gc` | float32 | `[p]` | each part's GC fraction, in target order |
+| `part_span` | uint32 | `[p, 2]` | each part's half-open `[start, end)` in the target |
+| `plan_root` | uint8 | `[32]` | the plan root |
+| `pot_child` | uint32 | `[e, 2]` | one edge per child: `[pot node, child node]`, nodes being the `p` parts then the pots |
+| `pot_hamming` | uint8 | `[n]` | each pot's `min_hamming`, 0 where the plan writes `null` (§7) |
+| `pot_span` | uint32 | `[n, 2]` | each pot's span in the target |
+| `pot_tier` | uint32 | `[n]` | each pot's tier, deepest tier first as in the plan |
+| `root_node` | uint32 | `[]` | the node whose sequence is the target |
+| `shape` | uint32 | `[6]` | `parts`, `tiers`, `pots`, `part_nt` min and max, `order_nt` (§6) |
+| `target_nt` | uint32 | `[]` | the target's length in bases |
+| `target_root` | uint8 | `[32]` | the unsalted target root (§0), never a helix `sequence-root` (§9) |
+| `tesseract` | uint8 | `[]` | `1`, the format tag |
+
+The map is a **view**, not an exact map: it holds no base, so a plan is not rebuilt from it (web §14, rule S4). It is the tree, the cuts and the two roots; the bases come from the target the map names, and `target[start:end]` is the part at that span. A part's own bases travel as a web `sequence` map of that part. An agent that wants the pot tree as a graph has `pot_child` as an edge list, ready for a network, without reading a base.
+
+A plan is mapped only if it composes to the target it names (§4): `of_plan` runs `compose` first, so a tensor root never names a plan that does not build its target. The enzyme's name, the machine's id and the part ids are not tensors — they are strings, and §14 has no string dtype; a reader that needs them reads the plan.
+
+| Id | Must hold |
+|---|---|
+| **T11** | Every sample plan's tensor map is the map `tesseract.json` pins, holds no base, and re-serializes to the same bytes. |
+
 ## Citations
 
 See [`pin-sources.md`](pin-sources.md). Sources are cited and pinned, never vendored — in particular `RomeroLab/omega`, which is GPL-3 and is pinned by commit, not copied.
@@ -210,6 +245,7 @@ See [`pin-sources.md`](pin-sources.md). Sources are cited and pinned, never vend
 - A plan's part contains a base the target does not have at that position.
 - `project` and `compile` disagree on the shape of a target that compiles.
 - A pot in a shipped plan repeats an overhang, or holds two overhangs a single mismatch apart.
+- A shipped plan's tensor map holds a base, or does not hash to the root `tesseract.json` pins.
 
 ## Licence
 

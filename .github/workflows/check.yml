@@ -15,3 +15,4 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python ref/tess.py check samples/epi-12k.m0-chip.tess --target samples/epi-12k.fa
       - run: python ref/tess.py check samples/site-2k.m1-column.tess --target samples/site-2k.fa
+      - run: python ref/tmap.py map samples/epi-12k.m0-chip.tess /tmp/plan.tmap --root 7987ea7474e95ee690e5786577823561bd04ced19e1822151204b2add62cd730
