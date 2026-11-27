@@ -7,6 +7,7 @@ Any other map, or any other dtype, is read with web's `ref/tensor.py`.
 
 import argparse
 import hashlib
+import math
 import struct
 import sys
 
@@ -22,6 +23,10 @@ def pack(kind, tensors):
     out = [b"tmap1", bytes([len(kind)]), kind.encode("ascii"), struct.pack("<H", len(tensors))]
     for name in sorted(tensors):
         code, values, shape = tensors[name]
+        if code == F32:
+            if not all(math.isfinite(v) for v in values):
+                raise Refusal("bad_plan", f"{name}: not a finite float")
+            values = [v + 0.0 for v in values]  # -0.0 is written +0.0 (§14), so unpack refuses it as non-canonical
         out += [bytes([len(name)]), name.encode("ascii"), bytes([code, len(shape)]), struct.pack(f"<{len(shape)}I", *shape)]
         try:
             out.append(struct.pack(f"<{len(values)}{FMT[code]}", *values))
@@ -83,6 +88,10 @@ def of_plan(plan):
 def plan_map(plan):
     target = tess.compose(plan)  # a plan is mapped only if it composes to the target it names (§4)
     m, sh, parts, pools = plan["machine"], plan["shape"], plan["parts"], plan["pools"]
+    for x in parts + pools:
+        span = x["span"]
+        if not (isinstance(span, list) and len(span) == 2 and all(type(v) is int for v in span)):
+            raise Refusal("bad_plan", f"{x['id']} span {span} is not [start, end]")
     spans = {p["id"]: tuple(p["span"]) for p in parts}
     for p in parts:  # compose checks the bases, not the coordinates the map exports
         if target[slice(*spans[p["id"]])] != p["seq"]:

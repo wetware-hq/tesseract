@@ -90,6 +90,8 @@ class Format(unittest.TestCase):
         with self.assertRaises(tess.Refusal) as ctx:
             tmap.pack("probe", {"x": (tmap.U8, [256], ())})
         self.assertEqual(ctx.exception.code, "bad_plan")
+        self.assertEqual(tmap.pack("probe", {"x": (tmap.F32, [-0.0], ())}), tmap.pack("probe", {"x": (tmap.F32, [0.0], ())}))
+        self.refused(tmap.pack("probe", {"x": (tmap.F32, [0.0], ())})[:-4] + struct.pack("<f", -0.0), "bad_map")
 
     def test_a_plan_that_does_not_compose_is_not_mapped(self):
         plan = tess.read_plan(ROOT / PINS["maps"][0]["plan"])
@@ -109,7 +111,9 @@ class Format(unittest.TestCase):
             self.assertEqual(ctx.exception.code, "bad_plan")
 
     def test_missing_metadata_is_bad_plan(self):
-        for drop in (lambda p: p["parts"][0].pop("gc"), lambda p: p.pop("floor"), lambda p: p["enzyme"].pop("overhang")):
+        for drop in (lambda p: p["parts"][0].pop("gc"), lambda p: p.pop("floor"), lambda p: p["enzyme"].pop("overhang"),
+                     lambda p: p["parts"][0]["span"].append(1), lambda p: p["pools"][0]["span"].append(1),
+                     lambda p: p["parts"][0].__setitem__("gc", float("nan"))):
             plan = tess.read_plan(ROOT / PINS["maps"][0]["plan"])
             drop(plan)
             with self.assertRaises(tess.Refusal) as ctx:
