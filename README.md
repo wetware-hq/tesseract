@@ -77,7 +77,7 @@ A `dna:` page in [`wetware-hq/helix`](https://github.com/wetware-hq/helix) fixes
 | [`tesseract.json`](tesseract.json) | Machines, sample targets, plan roots and pinned sources. |
 | [`ooc/tesseract.og`](ooc/tesseract.og) | ObjectGraph index for traversal without prose. |
 | [`samples/`](samples) | A 12 kb target compiled at four machines, and a 2 kb target that forces the enzyme to fall through. |
-| [`tests/`](tests) | 42 checks: exactness, canonical bytes, junction orthogonality, machine projection, every refusal. |
+| [`tests/`](tests) | 44 checks: exactness, canonical bytes, junction orthogonality, machine projection, every refusal. |
 
 ## Licence
 

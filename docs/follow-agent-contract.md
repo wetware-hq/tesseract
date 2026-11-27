@@ -153,18 +153,8 @@ Agents match the code, never the prose (T5).
 | `junction_mismatch` | two children of a pot do not share their overhang |
 | `target_mismatch` | the composed sequence is not the target the plan names |
 | `root_mismatch` | a plan's root is not the one the caller expected |
-| `bad_kind` | a tensor map's kind is not the one the reader maps (§10) |
 | `kind_mismatch` | a tensor map of another kind is given where a `plan` map is required (§10) |
-| `bad_count` | a tensor map has no record or more than 1,024 (§10) |
-| `bad_name` | a tensor name is not `[a-z][a-z0-9_]{0,63}` (§10) |
-| `bad_order` | tensor names are not strictly ascending (§10) |
-| `bad_dtype` | a dtype byte is not a §10 TensorFlow `DataType` number |
-| `bad_shape` | a tensor's values are not rectangular, or its rank is over 8 (§10) |
-| `bad_value` | a float tensor holds NaN, infinity or negative zero, or an integer does not fit its dtype (§10) |
-| `bad_magic` | tensor-map bytes do not begin `tmap1` (§10) |
-| `truncated` | tensor-map bytes end inside a record (§10) |
-| `trailing_bytes` | a byte follows the last tensor record (§10) |
-| `too_large` | a tensor map is over 2^30 bytes (§10) |
+| `bad_map` | bytes are not one canonical `tmap1` map in the three plan dtypes (§10) |
 | `exists` | the output path is already present |
 
 A refusal never writes a partial plan or a partial sequence.
@@ -215,7 +205,7 @@ Downward, a target may be any `ACGT` sequence, including one that carries a `dna
 
 ## §10 Tensor map `tmap1`
 
-A plan has exactly one tensor map, in the universal form `wetware-hq/web` contract §14 defines: named tensors, each a `TensorProto` (TensorFlow `DataType`, shape, row-major `tensor_content`), under the kind `plan`, named by a **tensor root** `sha256` of the map's bytes. `ref/tmap.py` is the reference; it is standard library only, and its bytes are web's record for record.
+A plan has exactly one tensor map, in the universal form `wetware-hq/web` contract §14 defines: named tensors, each a `TensorProto` (TensorFlow `DataType`, shape, row-major `tensor_content`), under the kind `plan`, named by a **tensor root** `sha256` of the map's bytes. `ref/tmap.py` is the reference: standard library only, it writes web's bytes record for record in three dtypes (float32, uint8, uint32). Any other map is read with web's `ref/tensor.py`.
 
 | Tensor | dtype | Shape | What it holds |
 |---|---|---|---|

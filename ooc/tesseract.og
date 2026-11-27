@@ -5,7 +5,7 @@ updated: 2026-11-27
 domain: tesseract|dna-assembly|type-iis|oligopool|chromosome|machine-compiler|tensor-map
 scope: all
 governs: docs/follow-agent-contract.md
-checksum: sha256:fab096467c6f10a663d5cfb6d14904d6e7547e5c04b7b78e771e0d34ee2fefae
+checksum: sha256:958d4d1e88c6348864bea1d5d683e952cfb2861a75718e39f6bead62ed1fc485
 ::end
 
 ::schema
@@ -163,9 +163,7 @@ Load docs/follow-agent-contract.md §10, then wetware-hq/web contract §14. of_p
 ->[:requires] contract
 ->[:requires] compose
 ->[:refuses] kind_mismatch
-->[:refuses] bad_dtype
-->[:refuses] bad_order
-->[:refuses] bad_value
+->[:refuses] bad_map
 ->[:refuses] target_mismatch
 ::end
 ::end
