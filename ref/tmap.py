@@ -172,9 +172,19 @@ def digest(hexroot):
 
 def of_plan(plan):
     """A plan as named tensors: its roots, its parts' spans, its pot tree and its shape. No base (S4)."""
-    tess.compose(plan)  # a plan is mapped only if it composes to the target it names (§4)
+    target = tess.compose(plan)  # a plan is mapped only if it composes to the target it names (§4)
     m, sh = plan["machine"], plan["shape"]
     parts, pools = plan["parts"], plan["pools"]
+    spans = {p["id"]: tuple(p["span"]) for p in parts}
+    for p in parts:  # compose checks the bases, not the coordinates the map exports
+        if target[slice(*spans[p["id"]])] != p["seq"]:
+            raise Refusal("bad_plan", f"{p['id']} span {list(p['span'])} is not its bases in the target")
+    for pot in pools:
+        spans[pot["id"]] = tuple(pot["span"])
+        if spans[pot["id"]] != (spans[pot["children"][0]][0], spans[pot["children"][-1]][1]):
+            raise Refusal("bad_plan", f"{pot['id']} span {list(pot['span'])} is not its children's")
+    if spans[plan["root_part"]] != (0, len(target)):
+        raise Refusal("bad_plan", f"{plan['root_part']} does not span the target")
     index = {p["id"]: i for i, p in enumerate(parts)}
     for i, pot in enumerate(pools):
         index[pot["id"]] = len(parts) + i

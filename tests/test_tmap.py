@@ -132,5 +132,16 @@ class Format(unittest.TestCase):
             self.assertEqual(ctx.exception.code, "bad_value")
 
 
+    def test_stale_coordinates_are_not_mapped(self):
+        for path, edit in (("parts", lambda p: p.__setitem__("span", [p["span"][0] + 1, p["span"][1] + 1])),
+                           ("pools", lambda p: p.__setitem__("span", [0, p["span"][1] - 1]))):
+            plan = tess.read_plan(ROOT / PINS["maps"][0]["plan"])
+            edit(plan[path][0])
+            tess.compose(plan)  # still composes: compose reads bases, not spans
+            with self.assertRaises(tess.Refusal) as ctx:
+                tmap.of_plan(plan)
+            self.assertEqual(ctx.exception.code, "bad_plan")
+
+
 if __name__ == "__main__":
     unittest.main()
