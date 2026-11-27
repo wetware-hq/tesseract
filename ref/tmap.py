@@ -23,8 +23,12 @@ NAME = re.compile(rb"[a-z][a-z0-9_]{0,63}")
 
 # TensorFlow DataType (tensorflow/core/framework/types.proto), as web contract §14 lists them.
 U8, F32, U32 = 4, 1, 22
-FMT = {U8: "B", F32: "f", U32: "I"}
-SIZE = {U8: 1, F32: 4, U32: 4}
+NAMES = {1: "float32", 2: "float64", 3: "int32", 4: "uint8", 5: "int16", 6: "int8", 9: "int64", 10: "bool",
+         17: "uint16", 19: "float16", 22: "uint32", 23: "uint64"}
+FMT = {1: "f", 2: "d", 3: "i", 4: "B", 5: "h", 6: "b", 9: "q", 10: "B", 17: "H", 19: "e", 22: "I", 23: "Q"}
+SIZE = {c: struct.calcsize("<" + f) for c, f in FMT.items()}
+FLOATS = {1, 2, 19}
+SIGNED = {3, 5, 6, 9}
 
 
 def flat(values, shape):
@@ -85,15 +89,18 @@ def pack(kind, tensors):
 def check(name, code, values):
     """§14: a float is finite and not negative zero; an integer fits its dtype."""
     for v in values:
-        if code == F32:
+        if code in FLOATS:
             if v != v or v in (float("inf"), float("-inf")):
                 raise Refusal("bad_value", f"{name}: not finite")
             if v == 0.0 and str(v)[0] == "-":
                 raise Refusal("bad_value", f"{name}: negative zero")
-            if struct.unpack("<f", struct.pack("<f", v))[0] != v:
-                raise Refusal("bad_value", f"{name}: {v} is not a float32")
+            f = "<" + FMT[code]
+            if struct.unpack(f, struct.pack(f, v))[0] != v:
+                raise Refusal("bad_value", f"{name}: {v} is not a {NAMES[code]}")
         else:
-            if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v < 1 << (8 * SIZE[code]):
+            bits = 1 if code == 10 else 8 * SIZE[code]
+            lo, hi = (-(1 << (bits - 1)), 1 << (bits - 1)) if code in SIGNED else (0, 1 << bits)
+            if isinstance(v, bool) or not isinstance(v, int) or not lo <= v < hi:
                 raise Refusal("bad_value", f"{name}: {v}")
 
 
@@ -191,10 +198,9 @@ def of_plan(plan):
 def show(blob):
     """kind, root and each tensor's dtype and shape, one line each."""
     kind, tensors = unpack(blob)
-    names = {U8: "uint8", F32: "float32", U32: "uint32"}
     lines = [f"{kind} tmap1:{root(blob)} bytes {len(blob)} tensors {len(tensors)}"]
     for name, (code, shape, _) in tensors.items():
-        lines.append(f"  {name:12} {names[code]:8} [{', '.join(str(d) for d in shape)}]")
+        lines.append(f"  {name:12} {NAMES[code]:8} [{', '.join(str(d) for d in shape)}]")
     return "\n".join(lines)
 
 

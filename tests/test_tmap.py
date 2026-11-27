@@ -12,6 +12,12 @@ sys.path.insert(0, str(ROOT / "ref"))
 import tess  # noqa: E402
 import tmap  # noqa: E402
 
+# A map of every other dtype, written by wetware-hq/web ref/tensor.py pack.
+MIX = (
+    "746d617031036d697809000161130102000000003e00c0016209020100000002000000ffffffffffffffff000000000001000001630a01"
+    "02000000010001640600f901650201010000000000000000000a400166110101000000ffff016717010100000000000000000000800168"
+    "050101000000d08a0169030101000000fbffffff"
+)
 PINS = json.loads((ROOT / "tesseract.json").read_text())["tensors"]
 
 
@@ -106,6 +112,24 @@ class Format(unittest.TestCase):
         with self.assertRaises(tess.Refusal) as ctx:
             tmap.of_plan(plan)
         self.assertEqual(ctx.exception.code, "target_mismatch")
+
+
+    def test_reads_every_web_dtype(self):  # web §14: one reader for every kind, not only plans
+        mix = bytes.fromhex(MIX)
+        kind, t = tmap.unpack(mix)
+        self.assertEqual(kind, "mix")
+        self.assertEqual({n: tmap.NAMES[c] for n, (c, _, _) in t.items()}, {
+            "a": "float16", "b": "int64", "c": "bool", "d": "int8", "e": "float64",
+            "f": "uint16", "g": "uint64", "h": "int16", "i": "int32"})
+        self.assertEqual(t["b"][2], [-1, 1 << 40])
+        self.assertEqual(t["g"][2], [1 << 63])
+        self.assertEqual(repack(mix), mix)
+        self.assertEqual(tmap.root(mix), "08071016ac2230ac7aa3ccfc4db50c078350f5da58124e0d7931e579d90baf7e")
+        self.assertIn("float16", tmap.show(mix))
+        for code, v in [(10, 2), (6, 128), (6, -129), (19, 1e9)]:
+            with self.assertRaises(tess.Refusal) as ctx:
+                tmap.pack("probe", {"x": (code, [v])})
+            self.assertEqual(ctx.exception.code, "bad_value")
 
 
 if __name__ == "__main__":
