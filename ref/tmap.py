@@ -26,7 +26,10 @@ def pack(kind, tensors):
         if code == F32:
             if not all(math.isfinite(v) for v in values):
                 raise Refusal("bad_plan", f"{name}: not a finite float")
-            values = [v + 0.0 for v in values]  # -0.0 is written +0.0 (§14), so unpack refuses it as non-canonical
+            try:  # round to float32 first, so a value that underflows to -0.0 is written +0.0 (§14)
+                values = [struct.unpack("<f", struct.pack("<f", v))[0] + 0.0 for v in values]
+            except (struct.error, OverflowError) as err:
+                raise Refusal("bad_plan", f"{name}: {err}") from None
         out += [bytes([len(name)]), name.encode("ascii"), bytes([code, len(shape)]), struct.pack(f"<{len(shape)}I", *shape)]
         try:
             out.append(struct.pack(f"<{len(values)}{FMT[code]}", *values))
@@ -55,7 +58,11 @@ def unpack(blob, kind=None):
             pos += size * struct.calcsize(FMT[code])
     except (IndexError, KeyError, UnicodeDecodeError, struct.error) as err:
         raise Refusal("bad_map", f"not a plan-dtype tmap1 map: {err}") from None
-    if blob[:5] != b"tmap1" or pos != len(blob) or list(tensors) != sorted(tensors) or pack(k, {t: (c, v, s) for t, (c, s, v) in tensors.items()}) != blob:
+    try:
+        canonical = pack(k, {t: (c, v, s) for t, (c, s, v) in tensors.items()}) == blob
+    except Refusal:
+        canonical = False
+    if blob[:5] != b"tmap1" or pos != len(blob) or list(tensors) != sorted(tensors) or not canonical:
         raise Refusal("bad_map", "not one canonical tmap1 map")
     if kind is not None and k != kind:
         raise Refusal("kind_mismatch", f"{k}, wanted {kind}")
