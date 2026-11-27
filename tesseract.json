@@ -310,5 +310,19 @@
         "tiers": 1
       }
     }
-  ]
+  ],
+  "tensors": {
+    "format": "tmap1",
+    "kind": "plan",
+    "exact": false,
+    "spec": "wetware-hq/web docs/follow-agent-contract.md \u00a714 @ ca14cd7b225c3fd083948dcc0f9c307900ba87f4",
+    "reference": "ref/tmap.py",
+    "maps": [
+      { "plan": "samples/epi-12k.m0-chip.tess", "root": "7987ea7474e95ee690e5786577823561bd04ced19e1822151204b2add62cd730", "bytes": 2231 },
+      { "plan": "samples/epi-12k.m1-column.tess", "root": "0f5f1dc18180a8b6a2137be2c0a73345b1fea2f4b416760b1cf2b8d12f059765", "bytes": 1608 },
+      { "plan": "samples/epi-12k.m2-tdt.tess", "root": "527e897b7f78d7a2d5e55ea7d71bce572d31f6b3850c5e08c7b14315bbdc6082", "bytes": 582 },
+      { "plan": "samples/epi-12k.m3-bet.tess", "root": "3ef167accaddc742db7a96e84a7a2aeb0fd01edf8bf57b382a29ba6f22dc4b8d", "bytes": 381 },
+      { "plan": "samples/site-2k.m1-column.tess", "root": "50c077c39794806c70506545f725e4b258a864c9c7945ac063b035ac471a1124", "bytes": 582 }
+    ]
+  }
 }
