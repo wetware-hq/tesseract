@@ -195,9 +195,13 @@ def candidates(goal, pins=None):
     for mid in goal["machines"]:
         row = tess.machine(mid, pins)
         for floor in goal["floors"]:
+            if floor == row["floor"]:
+                floor = None  # a machine's own floor under another name is its default, not a second candidate
             if floor is not None and not row["floor"] < floor <= row["ceil"]:
-                continue  # outside the machine, or its own floor under another name: the same candidate
-            out.append({"machine": mid, "floor": floor})
+                continue
+            cand = {"machine": mid, "floor": floor}
+            if cand not in out:
+                out.append(cand)
     if not out:
         raise Refusal("bad_goal", "no candidate machine and floor")
     if len(out) < 2:
@@ -377,7 +381,7 @@ def verify(doll, seq=None, pins=None):
     key = OBJECTIVES[goal["objective"]]
     open_set = candidates(goal, pins)
     counted = {"acts": 0, "backtracks": 0, "mbits": 0, "pots": 0, "predicts": 0}
-    acted, replayed, gates, pending = [], 0, [], None
+    acted, replayed, gates, armed, pending = [], 0, [], [], None
     if doll["frames"][1]["op"] != "branch" or doll["frames"][1]["candidates"] != open_set:
         raise Refusal("replay_divergence", "the branch is not the candidates the goal offers")
     for frame in doll["frames"][1:]:
@@ -442,6 +446,8 @@ def verify(doll, seq=None, pins=None):
             if len({tuple(step["s_ppm"]) for step in frame["trail"]}) < goal["depth"]:
                 raise Refusal("fake_nesting", "the state does not move between shells")
             gates.append(frame["trail"][-1]["gate_ppm"])
+            if acted:  # a gate before any plan composed cannot halt the search (§11)
+                armed.append(frame["trail"][-1]["gate_ppm"])
             pending = None
     if counted != doll["spent"]:
         raise Refusal("unaccounted_cost", f"{counted} against {doll['spent']}")
@@ -453,11 +459,15 @@ def verify(doll, seq=None, pins=None):
     if doll["result"]["plan_root"] != best["plan_root"]:
         raise Refusal("replay_divergence", "the emitted plan is not the best plan the trace acted on")
     halt = doll["result"]["halt"]
-    if halt == "gate" and gates[-1] < goal["theta_ppm"]:
+    if halt == "gate" and (not armed or armed[-1] < goal["theta_ppm"]):
         raise Refusal("replay_divergence", f"a gate halt at {gates[-1]} below theta {goal['theta_ppm']}")
-    if halt == "exhausted" and (open_set or any(g >= goal["theta_ppm"] for g in gates)):
+    if halt == "exhausted" and (open_set or any(g >= goal["theta_ppm"] for g in armed)):
         raise Refusal("replay_divergence", "an exhausted halt with a candidate left, or a gate that would have fired")
-    if halt not in ("gate", "exhausted"):
+    if halt == "budget_exhausted" and not (
+            doll["spent"]["acts"] >= goal["budget"]["acts"]
+            or doll["spent"]["mbits"] + mbits(len(open_set)) > goal["budget"]["mbits"]):
+        raise Refusal("replay_divergence", "a budget halt with budget left for another act")
+    if halt not in ("gate", "exhausted", "budget_exhausted"):
         raise Refusal("bad_doll", f"halt {halt!r}")
     return {"root": doll_root(doll), "head": doll["head"], "acts": doll["spent"]["acts"],
             "mbits": doll["spent"]["mbits"], "replayed": replayed, "gates": gates,

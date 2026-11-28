@@ -126,6 +126,11 @@ class Search(unittest.TestCase):
     def test_the_budget_halts_a_search_that_found_nothing(self):
         refused("budget_exhausted")(self, lambda: doll.reason(TARGET, goal(machines=["m1-column"], floors=(250, 260), acts=1)))
 
+    def test_a_budget_halt_after_a_plan_composed(self):  # D6
+        der = doll.reason(TARGET, goal(machines=["m0-chip", "m1-column", "m2-tdt"], floors=(None, 250), acts=2))
+        self.assertEqual(der["result"]["halt"], "budget_exhausted")
+        self.assertEqual(doll.verify(der, TARGET)["halt"], "budget_exhausted")
+
     def test_a_space_in_which_nothing_composes(self):
         refused("unsat_search")(self, lambda: doll.reason(TARGET, goal(machines=["m1-column"], floors=(250, 260))))
 
@@ -138,6 +143,9 @@ class Search(unittest.TestCase):
                                               {"machine": "m0-chip", "floor": 150},
                                               {"machine": "m1-column", "floor": None},
                                               {"machine": "m1-column", "floor": 250}])  # 150 is m1-column's own floor
+        offered = goal(machines=["m0-chip", "m1-column"], floors=(150,))  # a default named explicitly, with no null
+        self.assertEqual(doll.candidates(offered), [{"machine": "m0-chip", "floor": 150},
+                                                    {"machine": "m1-column", "floor": None}])
 
     def test_a_tie_keeps_the_plan_the_search_found_first(self):  # §11, replay agrees with reason
         der = doll.read_doll(ROOT / "samples/epi-12k.doll")
