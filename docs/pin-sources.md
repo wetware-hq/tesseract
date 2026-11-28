@@ -51,12 +51,33 @@ The construction is a claim about software: the plan composes to the target. Tha
 | Enzymatic synthesis as the route to longer runs — the bet `m2-tdt` and `m3-bet` stand for | `ceil` | Palluk et al. (2018) De novo DNA synthesis using polymerase-nucleotide conjugates. *Nat. Biotechnol.* 36, 645–650. doi:10.1038/nbt.4173 |
 | Writing to living genomes, the read-back end of the loop | out of scope here, pinned for the parent stack | Shipman et al. (2017) CRISPR–Cas encoding of a digital movie into the genomes of a population of living bacteria. *Nature* 547, 345–349. doi:10.1038/nature23017 |
 
+## Reasoning
+
+The Type II half (contract §11, `docs/distil-type-ii.md`) relies on these and on nothing else.
+
+| Claim | Source |
+|---|---|
+| Behaviour splits into a fast, automatic process and a slow, deliberate one; the two names this repository borrows | Kahneman (2011) *Thinking, Fast and Slow*. Farrar, Straus and Giroux. ISBN 978-0374275631. Borrowed as engineering vocabulary; no claim about human cognition is made. |
+| The seed: natural language to a molecular artifact in two stages, a cheap generator and a stronger re-ranker over sampled candidates — the predict-then-act split `doll1` takes and the generator/re-ranker split it leaves as a hypothesis | `westlake-repl/Denovo-Pinal`, commit `8ec0c4d0093867cc8adb667803965709baf7fad4`, `README.md` sha256 `e47cfe25f10ea5b9059ceea25cc99b7601c65a28cece57b6c938d8ffce93d839`; Dai et al., *Programmable design of functional proteins from natural language*, bioRxiv 2024.08.01.606258. **Cited and pinned, never vendored**; no weight, token or sequence of it is in this repository. |
+| The Type I half: the seven principles of a reflex machine, which D1–D7 are written against | `wetware-hq/tulip`, commit `a2b956086f97d547f267efa47f3efabbd48995d6`, `docs/distil-type-i.md` |
+| A shell's shape, byte form and the only sanctioned way to fit one | `wetware-hq/web`, commit `5588dfa59e4bf74319080bb551162bfd4649c810`, contract §2 (a web's weights), §14 (tensor maps), §15 (`fit`, `optim_step`, LoRA adapters) |
+| Sine networks of this shape approximate a smooth field over their input coordinates — why a 2-input shell can hold a halting surface and cannot read a sequence | SIREN, arXiv:2006.09661; universal approximation, Cybenko (1989) doi:10.1007/BF02551274 |
+
+## Benchmarks
+
+| Use | Source |
+|---|---|
+| The submission envelope, the batch semantics and the rate limits a derivation is scored through (§12); attribution required for any use | Artificial Analysis API reference, <https://artificialanalysis.ai/api-reference>: free Data API (model and creator ids, intelligence index) and `POST /api/v2/critpt/evaluate` (`x-api-key`, 10 requests per 24 hours by default). Grading access is approved per account; **no key is in this repository**, and no number from the API is ever written into a `.doll` (contract T17). |
+| The problems the grader behind that endpoint scores, cited because the envelope is reused, not because this repository is on it | CritPt, <https://critpt.com/> |
+
 ## Samples
 
 | Sample | How it is made |
 |---|---|
 | `samples/epi-12k.fa` | `ref/tess.py seed 12000` — `sha256(b"tess1" ‖ seed ‖ counter)` read two bits at a time, rejecting any base that would make a run of 4 or complete a machine enzyme site. Not a biological sequence and not derived from one. |
 | `samples/site-2k.fa` | the same generator at `seed 7`, with two `GGTCTC` sites spliced in, so the enzyme choice of contract §3 has something to avoid. |
+| `samples/epi-12k.doll` | `ref/doll.py reason` over every machine and the floors 120 and 250, objective `fewest_tiers`, depth 3, seed 0, no halting threshold: 7 candidates, 7 acts, 15,108 millibits, one `no_junction` backtrack. Its shells are fresh — derived from the seed, fitted by nobody. |
+| `samples/epi-12k.halt.doll` | the same target on `m0-chip` and `m1-column`, objective `fewest_bases`, `theta_ppm` 15,000: the gate halts the search after 2 acts. |
 
 No third-party sequence is vendored, so no sequence in this repository carries anyone else's rights.
 

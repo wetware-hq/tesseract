@@ -1,28 +1,33 @@
 ::meta
 title: tesseract route and file index
-version: 2
-updated: 2026-11-27
-domain: tesseract|dna-assembly|type-iis|oligopool|chromosome|machine-compiler|tensor-map
+version: 3
+updated: 2026-11-28
+domain: tesseract|dna-assembly|type-iis|oligopool|chromosome|machine-compiler|tensor-map|type-ii-reasoning|doll1|matryoshka
 scope: all
 governs: docs/follow-agent-contract.md
-checksum: sha256:958d4d1e88c6348864bea1d5d683e952cfb2861a75718e39f6bead62ed1fc485
+checksum: sha256:893bf7f3c6cdffd04c0a0e54432414ad6f0d7660e2d6f77258757d1c2bc39139
 ::end
 
 ::schema
 node-types: [stage, skill, system, plan, assertion, meta]
 edge-types: [requires, precedes, composes, refuses]
-scope-levels: [all, compiler, composer, orderer, committer]
+scope-levels: [all, compiler, composer, orderer, committer, reasoner]
 ::end
 
 ::index
 # id | type | scope | conf | keywords
 banner | meta | all | 1.00 | academic, not-protocol, not-performed
-contract | stage | all | 1.00 | .tess, tess1, plan-bytes, machine, compose, refusals, omega1, T1-T10
+contract | stage | all | 1.00 | .tess, tess1, plan-bytes, machine, compose, refusals, omega1, doll1, T1-T21
 pins | stage | all | 1.00 | romerolab-omega@160be2f7, sc2.0-synIII, potapov-2018, pryor-2020, palluk-2018, web@2f7f63f6, helix@1b290404
 runlength | stage | all | 0.50 | tiers-not-bases, depth-is-risk, fidelity-table-would-cut-tiers, hypothesis
 compile | skill | compiler | 1.00 | part-count, fewest-tiers, mid-runlength-slack, backtracking, never-edits-target
 compose | skill | composer | 1.00 | normative, overlap-by-overhang, target-root, exact-or-refuse
-tmap1 | system | all | 1.00 | tensor-map, .tmap, plan-kind, view, no-base, pot-child-edges, tensorflow-DataType, T11
+tmap1 | system | all | 1.00 | tensor-map, .tmap, plan-kind, doll-kind, view, no-base, pot-child-edges, tensorflow-DataType, T11, T21
+typeii | stage | reasoner | 1.00 | dual-process, D1-D7, trace, search, world-model, cost-in-millibits, matryoshka, no-self-grading
+reason | skill | reasoner | 1.00 | .doll, doll1, goal, shells, predict-then-act, backtrack, gate-halt, replay, T12-T20
+benchmark | system | reasoner | 0.50 | artificial-analysis, critpt-envelope, reflex-baseline, bits-to-pass, halt-calibration, receipt-outside, hypothesis
+doll1:9dd4222f42fa277c4baba391904b9d7d315597bcb110deb55f89a246a76af8bf | plan | reasoner | 1.00 | epi-12k, 7-candidates, 7-acts, 15108-mbits, no_junction-backtrack, exhausted, m3-bet
+doll1:1a0cce69359d33c8a74e73f77156c1b7dbc89feb7994ae4dbe7f47cd6efa116f | plan | reasoner | 1.00 | epi-12k, fewest-bases, theta-15000, 2-acts, gate-halt, m1-column
 order | system | orderer | 1.00 | parts-verbatim, order_nt, no-adaptors, re-check-delivery
 commit | system | committer | 1.00 | plan-root, dna-page-by-subject, salted-sequence-root, scratch-plan, chain-null
 tess1:d76ec2bdbc31afaa9b9422565c011f2db890391dfe2f53d871036a0fab7ee9c3 | plan | all | 1.00 | epi-12k, m0-chip, 83-parts, 2-tiers, 10-pots, bsai
@@ -72,7 +77,7 @@ Load docs/follow-agent-contract.md.
 
 ::node [id=pins type=stage confidence=1.00 scope=all updated=2026-11-26]
 ::dense
-omega=romerolab@160be2f7-gpl3-never-vendored|fidelity=potapov-2018|pryor-2020|synthesis=kosuri-2014|palluk-2018|chromosome=richardson-2017|parent=web@2f7f63f6|up=helix@1b290404
+omega=romerolab@160be2f7-gpl3-never-vendored|fidelity=potapov-2018|pryor-2020|synthesis=kosuri-2014|palluk-2018|chromosome=richardson-2017|parent=web@2f7f63f6|up=helix@1b290404|seed=denovo-pinal@8ec0c4d0-never-vendored|typei=tulip@a2b95608|dual-process=kahneman-2011|benchmark=artificialanalysis-api
 ::end
 ::full
 Load docs/pin-sources.md and tesseract.json sources.
@@ -183,9 +188,69 @@ Load systems/commit-plan.md; helix dna: pages carry a plan claim as a hypothesis
 ::end
 ::end
 
+::node [id=typeii type=stage confidence=1.00 scope=reasoner updated=2026-11-28]
+::dense
+D1-trace|D2-search|D3-predict-before-paying|D4-pay-in-millibits|D5-nest-shallow-into-deep|D6-halt-inside-budget|D7-never-self-grade
+::end
+::full
+Load docs/distil-type-ii.md; the Type I principles it answers are in tulip docs/distil-type-i.md.
+::end
+::edges
+->[:requires] docs/distil-type-ii.md
+->[:requires] contract
+->[:precedes] reason
+->[:precedes] benchmark
+->[:refuses] unaccounted_cost
+->[:refuses] self_certified
+->[:refuses] fake_nesting
+::end
+::end
+
+::node [id=reason type=skill confidence=1.00 scope=reasoner updated=2026-11-28]
+::dense
+goal-root-fixed|project-predicts|compile+compose-acts|refusal-is-an-outcome|shells-fresh-from-seed|gate-halts|replay-or-refuse
+::end
+::full
+Load reason.md and skills/reason-build.md; run ref/doll.py reason, show, verify.
+::end
+::edges
+->[:requires] reason.md
+->[:requires] skills/reason-build.md
+->[:requires] ref/doll.py
+->[:requires] compose
+->[:composes] doll1:9dd4222f42fa277c4baba391904b9d7d315597bcb110deb55f89a246a76af8bf
+->[:composes] doll1:1a0cce69359d33c8a74e73f77156c1b7dbc89feb7994ae4dbe7f47cd6efa116f
+->[:precedes] benchmark
+->[:refuses] bad_goal
+->[:refuses] bad_doll
+->[:refuses] bad_shell
+->[:refuses] goal_mutated
+->[:refuses] depth_overflow
+->[:refuses] budget_exhausted
+->[:refuses] unsat_search
+->[:refuses] vacuous_doll
+->[:refuses] replay_divergence
+::end
+::end
+
+::node [id=benchmark type=system confidence=0.50 scope=reasoner updated=2026-11-28]
+::dense
+submit-plan-root-not-code|reflex-baseline-0-bits|bits-to-pass|halt-calibration|receipt-outside-the-doll|no-api-key-here|attribution-required
+::end
+::full
+Load systems/benchmark-reasoning.md; run ref/doll.py submit. A grade is a receipt, never a field of a derivation.
+::end
+::edges
+->[:requires] systems/benchmark-reasoning.md
+->[:requires] reason
+->[:precedes] stop
+->[:refuses] self_certified
+::end
+::end
+
 ::node [id=stop type=assertion confidence=1.00 scope=all updated=2026-11-26]
 ::dense
-plan-composed|length-agrees|machine-named|sufficient
+plan-composed|length-agrees|machine-named|derivation-replayed|sufficient
 ::end
 ::full
 Stop: the plan composes to its target and the question is answered.

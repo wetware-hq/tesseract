@@ -1,6 +1,8 @@
-"""`tmap1` tensor map (wetware-hq/web contract §14) of a tess1 plan: the plan's tree as named tensors.
+"""`tmap1` tensor maps (wetware-hq/web contract §14) of this repository's two objects.
 
-The plan map is a **view**: roots, spans, the pot tree and the shape, never a base (§10, web S4).
+A `plan` map is a tess1 plan's tree as named tensors; a `doll` map is a doll1 derivation's trace as
+named tensors (§11). Both are **views**: roots, spans, the tree, the trace and the shape, never a
+base (§10, web S4).
 Standard library only; it writes web's bytes record for record, using three TensorFlow DataTypes.
 Any other map, or any other dtype, is read with web's `ref/tensor.py`.
 """
@@ -11,6 +13,7 @@ import math
 import struct
 import sys
 
+import doll
 import tess
 from tess import Refusal
 
@@ -39,7 +42,7 @@ def pack(kind, tensors):
 
 
 def unpack(blob, kind=None):
-    """tmap1 bytes in the three plan dtypes -> (kind, {name: (dtype, shape, flat values)})."""
+    """tmap1 bytes in the three dtypes this repository writes -> (kind, {name: (dtype, shape, values)})."""
     try:
         n = blob[5]
         k = blob[6 : 6 + n].decode("ascii")
@@ -138,15 +141,65 @@ def plan_map(plan):
     })
 
 
+def of_doll(der):
+    """A derivation as named tensors: its roots, its trace, its gates and what it spent. No base, no plan.
+
+    The map is a view of the trace (§11): the ops, the information each act cost, the gate each
+    nesting of the shells returned, and the three roots a reader needs to find the goal, the plan
+    and the derivation itself. The candidates, the machine ids and the refusal codes are strings,
+    and §14 has no string dtype; a reader that needs them reads the `.doll` file.
+    """
+    try:
+        return doll_map(der)
+    except (KeyError, IndexError, TypeError, ValueError) as err:
+        raise Refusal("bad_doll", f"{type(err).__name__}: {err}") from None
+
+
+def doll_map(der):
+    doll.verify(der)  # a derivation is mapped only if its chain, gates and costs replay (§11)
+    goal, shells, frames, spent = der["goal"], der["shells"], der["frames"], der["spent"]
+    shape = der["result"]["shape"]
+    gates = [f["trail"][-1]["gate_ppm"] / doll.PPM for f in frames if f["op"] == "nest"]
+
+    def vec(code, values):
+        return (code, list(values), (len(values),))
+
+    return pack("doll", {
+        "alpha_ppm": vec(U32, [s["alpha_ppm"] for s in shells]),
+        "budget": vec(U32, [goal["budget"]["acts"], goal["budget"]["mbits"]]),
+        "depth": (U8, [goal["depth"]], ()),
+        "doll": (U8, [1], ()),
+        "doll_root": digest(doll.doll_root(der)),
+        "frame_mbits": vec(U32, [f.get("mbits", 0) for f in frames]),
+        "frame_op": vec(U8, [doll.OPS.index(f["op"]) for f in frames]),
+        "gate": vec(F32, gates),
+        "goal_root": digest(doll.goal_root(goal)),
+        "head": digest(der["head"]),
+        "plan_root": digest(der["result"]["plan_root"]),
+        "shape": vec(U32, [shape["parts"], shape["tiers"], shape["pots"], shape["part_nt"][0], shape["part_nt"][1], shape["order_nt"]]),
+        "shell_root": (U8, [b for s in shells for b in bytes.fromhex(s["root"])], (len(shells), 32)),
+        "spent": vec(U32, [spent["acts"], spent["backtracks"], spent["mbits"], spent["pots"], spent["predicts"]]),
+        "target_nt": (U32, [goal["target"]["nt"]], ()),
+        "target_root": digest(goal["target"]["root"]),
+        "theta": (F32, [goal["theta_ppm"] / doll.PPM], ()),
+        "verdict": (U8, [0], ()),  # 0 is "unverified", the only verdict a derivation may carry (§11)
+    })
+
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="tmap1: a tess1 plan as named tensors (web contract §14)")
+    ap = argparse.ArgumentParser(description="tmap1: a tess1 plan or a doll1 derivation as named tensors (web §14)")
     ap.add_argument("cmd", choices=["map"])
-    ap.add_argument("plan")
+    ap.add_argument("plan", help="a .tess plan or a .doll derivation")
     ap.add_argument("out")
     ap.add_argument("--root", default=None, help="expected tensor root")
     a = ap.parse_args(argv)
     try:
-        blob = of_plan(tess.read_plan(a.plan))
+        if str(a.plan).endswith(".doll"):
+            blob = of_doll(doll.read_doll(a.plan))
+        elif str(a.plan).endswith(".tess"):
+            blob = of_plan(tess.read_plan(a.plan))
+        else:
+            raise Refusal("kind_mismatch", "a map is written for a .tess plan or a .doll derivation")
         if a.root and root(blob) != a.root:
             raise Refusal("root_mismatch", root(blob))
         tess.write(a.out, blob)
