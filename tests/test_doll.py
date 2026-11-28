@@ -58,7 +58,7 @@ class Samples(unittest.TestCase):
             der = doll.read_doll(ROOT / pin["path"])
             acts = [f for f in der["frames"] if f["op"] == "act" and f["outcome"] == "plan"]
             key = doll.OBJECTIVES[der["goal"]["objective"]]
-            self.assertEqual(der["result"]["plan_root"], min(acts, key=lambda f: (key(f["shape"]), f["plan_root"]))["plan_root"])
+            self.assertEqual(der["result"]["plan_root"], min(acts, key=lambda f: key(f["shape"]))["plan_root"])
             row = tess.machine(der["result"]["machine"])
             plan = tess.compile_plan(TARGET, row, der["result"]["floor"])
             self.assertEqual(tess.plan_root(plan), der["result"]["plan_root"])
@@ -127,7 +127,27 @@ class Search(unittest.TestCase):
         refused("budget_exhausted")(self, lambda: doll.reason(TARGET, goal(machines=["m1-column"], floors=(250, 260), acts=1)))
 
     def test_a_space_in_which_nothing_composes(self):
-        refused("unsat_search")(self, lambda: doll.reason(TARGET, goal(machines=["m1-column"], floors=(250,))))
+        refused("unsat_search")(self, lambda: doll.reason(TARGET, goal(machines=["m1-column"], floors=(250, 260))))
+
+    def test_one_candidate_is_a_reflex(self):  # D4: a free derivation is `compile`
+        refused("unaccounted_cost")(self, lambda: doll.reason(TARGET, goal(machines=["m1-column"], floors=(None,))))
+
+    def test_a_machines_own_floor_is_not_a_second_candidate(self):
+        g = goal(machines=["m0-chip", "m1-column"], floors=(None, 150, 250))
+        self.assertEqual(doll.candidates(g), [{"machine": "m0-chip", "floor": None},
+                                              {"machine": "m0-chip", "floor": 150},
+                                              {"machine": "m1-column", "floor": None},
+                                              {"machine": "m1-column", "floor": 250}])  # 150 is m1-column's own floor
+
+    def test_a_tie_keeps_the_plan_the_search_found_first(self):  # §11, replay agrees with reason
+        der = doll.read_doll(ROOT / "samples/epi-12k.doll")
+        key = doll.OBJECTIVES[der["goal"]["objective"]]
+        acts = [f for f in der["frames"] if f["op"] == "act" and f["outcome"] == "plan"]
+        tied = [f for f in acts if key(f["shape"]) == (1, 1, 12036)]
+        self.assertEqual(len(tied), 2)
+        self.assertGreater(tied[1]["plan_root"], tied[0]["plan_root"])
+        best = min(acts, key=lambda f: key(f["shape"]))
+        self.assertEqual(doll.verify(der)["plan_root"], best["plan_root"])
 
     def test_a_goal_whose_target_is_another_sequence(self):
         refused("goal_mutated")(self, lambda: doll.reason(TARGET[:-1], goal()))
@@ -206,6 +226,36 @@ class Replay(unittest.TestCase):
         der["head"] = doll.head(der)
         der["result"]["plan_root"] = "2" * 64
         refused("replay_divergence")(self, lambda: doll.verify(der, TARGET))
+
+    def test_a_gate_that_the_shells_do_not_return(self):  # T14: the gates are recomputed, not read
+        act = next(i for i, f in enumerate(self.der["frames"]) if f["op"] == "nest")
+        der = self.tampered(lambda d: d["frames"][act]["trail"][-1].__setitem__("gate_ppm", 999_999))
+        der["head"] = doll.head(der)
+        refused("replay_divergence")(self, lambda: doll.verify(der))
+
+    def test_an_act_that_did_not_pay_for_its_options(self):  # T18
+        act = next(i for i, f in enumerate(self.der["frames"]) if f["op"] == "act")
+        for edit in (lambda d: d["frames"][act].__setitem__("mbits", 1),
+                     lambda d: d["frames"][act - 1].__setitem__("ranked", 9),
+                     lambda d: d["frames"][1].__setitem__("mbits", 7)):
+            der = self.tampered(edit)
+            der["head"] = doll.head(der)
+            refused("unaccounted_cost")(self, lambda: doll.verify(der))
+
+    def test_a_choice_project_does_not_rank_first(self):  # T15, D3
+        act = next(i for i, f in enumerate(self.der["frames"]) if f["op"] == "predict")
+        der = self.tampered(lambda d: d["frames"][act].__setitem__("candidate", {"floor": None, "machine": "m0-chip"}))
+        der["head"] = doll.head(der)
+        refused("replay_divergence")(self, lambda: doll.verify(der))
+
+    def test_a_branch_that_is_not_the_space_the_goal_offers(self):
+        der = self.tampered(lambda d: d["frames"][1].__setitem__("candidates", d["frames"][1]["candidates"][:2]))
+        der["head"] = doll.head(der)
+        refused("replay_divergence")(self, lambda: doll.verify(der))
+
+    def test_a_halt_the_gate_does_not_support(self):  # D6
+        der = self.tampered(lambda d: d["result"].__setitem__("halt", "exhausted"))
+        refused("replay_divergence")(self, lambda: doll.verify(der))
 
     def test_an_unknown_op(self):
         der = self.tampered(lambda d: d["frames"][1].__setitem__("op", "guess"))

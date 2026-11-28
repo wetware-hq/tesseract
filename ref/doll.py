@@ -195,11 +195,13 @@ def candidates(goal, pins=None):
     for mid in goal["machines"]:
         row = tess.machine(mid, pins)
         for floor in goal["floors"]:
-            if floor is not None and not row["floor"] <= floor <= row["ceil"]:
-                continue
+            if floor is not None and not row["floor"] < floor <= row["ceil"]:
+                continue  # outside the machine, or its own floor under another name: the same candidate
             out.append({"machine": mid, "floor": floor})
     if not out:
         raise Refusal("bad_goal", "no candidate machine and floor")
+    if len(out) < 2:
+        raise Refusal("unaccounted_cost", "one candidate is a reflex (`compile`), not a derivation")
     return out
 
 
@@ -236,7 +238,8 @@ def reason(seq, goal, pins=None, shells=None):
     best, state, halted = None, [-1.0, -1.0], None
     open_set = list(frontier)
     while open_set:
-        if spent["acts"] >= goal["budget"]["acts"] or spent["mbits"] >= goal["budget"]["mbits"]:
+        cost = mbits(len(open_set))
+        if spent["acts"] >= goal["budget"]["acts"] or spent["mbits"] + cost > goal["budget"]["mbits"]:
             halted = "budget_exhausted"
             break
         ranked = []
@@ -248,7 +251,6 @@ def reason(seq, goal, pins=None, shells=None):
         spent["predicts"] += len(ranked)
         _, _, cand, predicted = ranked[0]
         frames.append({"op": "predict", "candidate": cand, "shape": predicted, "ranked": len(ranked)})
-        cost = mbits(len(open_set))
         open_set.remove(cand)
         spent["mbits"] += cost
         spent["acts"] += 1
@@ -336,9 +338,13 @@ def read_doll(path):
 
 
 def verify(doll, seq=None, pins=None):
-    """Replay a doll: its chain, its gates, its costs, its acts and the plan it emitted (§11).
+    """Replay a derivation: its chain, its choices, its costs, its gates, its halt and its acts (§11).
 
-    A doll grades nothing. This returns what the trace regenerates, and refuses where it does not.
+    Everything but the acts replays without the target: the candidates come from the goal, each
+    prediction from `project`, each cost from how many options were open, and each gate from running
+    the regenerated shells on the state the trace says it reached. With `seq`, every act is compiled
+    and composed again as well. A derivation grades nothing; this returns what the trace regenerates,
+    and refuses where it does not.
     """
     goal = doll["goal"]
     if doll["verdict"] != "unverified":
@@ -354,7 +360,7 @@ def verify(doll, seq=None, pins=None):
         raise Refusal("replay_divergence", "the head is not the chain over these frames")
     if len(doll["shells"]) != goal["depth"] or not 1 <= goal["depth"] <= DEPTH_MAX:
         raise Refusal("depth_overflow" if goal["depth"] > DEPTH_MAX else "fake_nesting", "depth")
-    shells = []
+    shells, alphas = [], []
     for k, shell in enumerate(doll["shells"]):
         if shell["alpha_ppm"] == 0:
             raise Refusal("fake_nesting", f"shell {k} moves the state by nothing")
@@ -364,58 +370,98 @@ def verify(doll, seq=None, pins=None):
         if shell_root(made) != shell["root"]:
             raise Refusal("replay_divergence", f"shell {k} is not the shell its root names")
         shells.append(made)
+        alphas.append(shell["alpha_ppm"] / PPM)
+    if seq is not None and (tess.seq_root(seq) != goal["target"]["root"] or len(seq) != goal["target"]["nt"]):
+        raise Refusal("goal_mutated", "this sequence is not the target the goal names")
+
+    key = OBJECTIVES[goal["objective"]]
+    open_set = candidates(goal, pins)
     counted = {"acts": 0, "backtracks": 0, "mbits": 0, "pots": 0, "predicts": 0}
-    acted, replayed = [], 0
-    for frame in doll["frames"]:
+    acted, replayed, gates, pending = [], 0, [], None
+    if doll["frames"][1]["op"] != "branch" or doll["frames"][1]["candidates"] != open_set:
+        raise Refusal("replay_divergence", "the branch is not the candidates the goal offers")
+    for frame in doll["frames"][1:]:
         counted["mbits"] += frame.get("mbits", 0)
+        if frame["op"] == "branch" and frame["mbits"] != mbits(len(open_set)):
+            raise Refusal("unaccounted_cost", "the branch did not pay for naming one candidate")
         if frame["op"] == "predict":
             counted["predicts"] += frame["ranked"]
+            if frame["ranked"] != len(open_set):
+                raise Refusal("unaccounted_cost", f"a prediction over {frame['ranked']} of {len(open_set)} candidates")
+            ranked = sorted((key(shape), hashlib.sha256(canonical(c)).hexdigest(), c, shape)
+                            for c, shape in ((c, tess.project(goal["target"]["nt"], tess.machine(c["machine"], pins), c["floor"]))
+                                             for c in open_set))
+            if ranked[0][2] != frame["candidate"] or ranked[0][3] != frame["shape"]:
+                raise Refusal("replay_divergence", f"{frame['candidate']} is not what `project` ranks first here")
+            pending = frame
         if frame["op"] == "act":
             counted["acts"] += 1
+            if pending is None or frame["candidate"] != pending["candidate"]:
+                raise Refusal("replay_divergence", "an act without the prediction that chose it")
+            if frame["mbits"] != mbits(len(open_set)):
+                raise Refusal("unaccounted_cost", f"{frame['candidate']} cost {frame['mbits']} of {len(open_set)} options")
+            open_set.remove(frame["candidate"])
+            if counted["mbits"] > goal["budget"]["mbits"] or counted["acts"] > goal["budget"]["acts"]:
+                raise Refusal("budget_exhausted", "an act outside the budget the goal set")
             if frame["outcome"] == "plan":
                 counted["pots"] += frame["shape"]["pots"]
                 acted.append(frame)
+                if frame["surprise_ppm"] != round(surprise(pending["shape"], frame["shape"]) * PPM):
+                    raise Refusal("replay_divergence", f"{frame['candidate']}: the recorded surprise is not the prediction's error")
+            elif not frame["outcome"].startswith("refused:"):
+                raise Refusal("bad_doll", f"outcome {frame['outcome']!r}")
+            if seq is not None:
+                row = tess.machine(frame["candidate"]["machine"], pins)
+                try:
+                    plan = tess.compile_plan(seq, row, frame["candidate"]["floor"],
+                                             goal["allow"]["small_fragments"], goal["allow"]["small_episomes"])
+                except Refusal as err:
+                    got = f"refused:{err.code}"
+                else:
+                    got = "plan"
+                    if tess.plan_root(plan) != frame["plan_root"] or plan["shape"] != frame["shape"]:
+                        raise Refusal("replay_divergence", f"{frame['candidate']} gives another plan")
+                if got != frame["outcome"]:
+                    raise Refusal("replay_divergence", f"{frame['candidate']}: {got}, the doll says {frame['outcome']}")
+                replayed += 1
         if frame["op"] == "backtrack":
             counted["backtracks"] += 1
+            if pending is None or frame["open"] != len(open_set):
+                raise Refusal("replay_divergence", "a backtrack over another frontier")
         if frame["op"] == "nest":
-            moved = [v["s_ppm"] for v in frame["trail"]]
             if len(frame["trail"]) != goal["depth"]:
                 raise Refusal("fake_nesting", "a nest that does not use every shell")
-            if all(row == moved[0] for row in moved) and goal["depth"] > 1:
+            if pending is None:
+                raise Refusal("replay_divergence", "a nesting without an act before it")
+            spend = min(1.0, counted["acts"] / goal["budget"]["acts"])
+            act = doll["frames"][doll["frames"].index(pending) + 1]
+            moved = 1.0 if act["outcome"] != "plan" else surprise(pending["shape"], act["shape"])
+            _, trail = nest(shells, alphas, [2.0 * spend - 1.0, 2.0 * moved - 1.0])
+            if trail != frame["trail"]:
+                raise Refusal("replay_divergence", "the shells do not return the gates the trace records")
+            if len({tuple(step["s_ppm"]) for step in frame["trail"]}) < goal["depth"]:
                 raise Refusal("fake_nesting", "the state does not move between shells")
+            gates.append(frame["trail"][-1]["gate_ppm"])
+            pending = None
     if counted != doll["spent"]:
         raise Refusal("unaccounted_cost", f"{counted} against {doll['spent']}")
     if doll["spent"]["mbits"] <= 0 or doll["spent"]["acts"] <= 0:
         raise Refusal("unaccounted_cost", "a derivation that cost nothing is a reflex, not a thought")
     if not acted:
         raise Refusal("vacuous_doll", "no act composed a plan")
-    key = OBJECTIVES[goal["objective"]]
-    best = min(acted, key=lambda f: (key(f["shape"]), f["plan_root"]))
+    best = min(acted, key=lambda f: key(f["shape"]))  # ties keep the plan the search found first, as `reason` does
     if doll["result"]["plan_root"] != best["plan_root"]:
         raise Refusal("replay_divergence", "the emitted plan is not the best plan the trace acted on")
-    if seq is not None:
-        if tess.seq_root(seq) != goal["target"]["root"] or len(seq) != goal["target"]["nt"]:
-            raise Refusal("goal_mutated", "this sequence is not the target the goal names")
-        for frame in doll["frames"]:
-            if frame["op"] != "act":
-                continue
-            row = tess.machine(frame["candidate"]["machine"], pins)
-            try:
-                plan = tess.compile_plan(seq, row, frame["candidate"]["floor"],
-                                         goal["allow"]["small_fragments"], goal["allow"]["small_episomes"])
-            except Refusal as err:
-                got = f"refused:{err.code}"
-            else:
-                got = "plan"
-                if tess.plan_root(plan) != frame["plan_root"]:
-                    raise Refusal("replay_divergence", f"{frame['candidate']} gives another plan root")
-            if got != frame["outcome"]:
-                raise Refusal("replay_divergence", f"{frame['candidate']}: {got}, the doll says {frame['outcome']}")
-            replayed += 1
-    gates = [f["trail"][-1]["gate_ppm"] for f in doll["frames"] if f["op"] == "nest"]
+    halt = doll["result"]["halt"]
+    if halt == "gate" and gates[-1] < goal["theta_ppm"]:
+        raise Refusal("replay_divergence", f"a gate halt at {gates[-1]} below theta {goal['theta_ppm']}")
+    if halt == "exhausted" and (open_set or any(g >= goal["theta_ppm"] for g in gates)):
+        raise Refusal("replay_divergence", "an exhausted halt with a candidate left, or a gate that would have fired")
+    if halt not in ("gate", "exhausted"):
+        raise Refusal("bad_doll", f"halt {halt!r}")
     return {"root": doll_root(doll), "head": doll["head"], "acts": doll["spent"]["acts"],
             "mbits": doll["spent"]["mbits"], "replayed": replayed, "gates": gates,
-            "halt": doll["result"]["halt"], "plan_root": doll["result"]["plan_root"],
+            "halt": halt, "plan_root": doll["result"]["plan_root"],
             "verdict": doll["verdict"], "shells": [shell_root(s) for s in shells]}
 
 

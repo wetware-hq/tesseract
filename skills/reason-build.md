@@ -32,7 +32,7 @@ One target, several machines and floors offered, one objective: search the offer
 
 ## Contraindications
 
-- One machine, one floor, no objective: that is `compile` (`compile-chromosome.md`), 0 bits, and a derivation would be `unaccounted_cost` theatre.
+- One machine, one floor, no objective: that is `compile` (`compile-chromosome.md`), 0 bits; a goal that offers one candidate is refused as `unaccounted_cost`.
 - Not a designer of targets. A goal names a target by root and length; nothing here proposes a sequence, and the reasoner cannot edit one.
 - Not a fidelity or cost model. The objective ranks `tiers`, `pots` and `order_nt` — the three numbers `project` gives — and nothing about money, time or success rate.
 
@@ -52,7 +52,7 @@ python ref/doll.py verify <out.doll> --target <target.fa>  # chain, gates, costs
 4. **Act.** `compile` the best-predicted candidate and `compose` the result (§4). A refusal is an outcome, not an error: its code is recorded and the candidate is dropped.
 5. **Nest.** Move the search state to `(budget spent, surprise)`, run it through the `D` shells, and read the deepest shell's gate.
 6. **Halt.** Stop when the gate reaches the goal's `theta_ppm` and a plan has composed, when the budget is out, or when the frontier is empty. Emit the best composed plan under the objective, with `verdict: "unverified"`.
-7. **Replay before citing.** `verify` regenerates the shells from the seed, re-runs every act, checks the chain, the gates and the sums, and refuses on any divergence. Never cite a derivation that has not been replayed with its target in hand.
+7. **Replay before citing.** `verify` regenerates the shells, re-enumerates the goal's candidates, re-ranks each prediction, re-charges each choice, re-runs the shells to every recorded gate, checks the halt, and re-compiles every act against the target. It refuses on any divergence. Never cite a derivation that has not been replayed with its target in hand.
 
 ## Worked example
 

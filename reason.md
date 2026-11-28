@@ -20,7 +20,7 @@ output  = "derivation --fileformat .doll { canonical JSON, doll root = sha256(by
 ## Axioms
 
 1. **One byte form.** A derivation is canonical JSON: sorted keys, no spaces, ASCII, one trailing newline (contract §2 bytes, §11). A parser accepts bytes `b` only if `canonical(read(b)) == b`.
-2. **Replay is normative.** A derivation is valid only if its frames regenerate: the same goal and seed give the same shells, the same gates, the same acts and the same `head` (§11). Reasoning is one way to reach a derivation; replaying it is the rule.
+2. **Replay is normative.** A derivation is valid only if its frames regenerate: the same goal and seed give the same candidates, the same predictions, the same costs, the same shells, the same gates, the same acts and the same `head` (§11). Reasoning is one way to reach a derivation; replaying it is the rule.
 3. **Exactness is `compose`, never a shell.** The plan a derivation emits is checked by contract §4 and nothing else. A shell orders candidates and decides when to stop; it never says a plan is correct, and no net's output is evidence.
 4. **A derivation costs something.** Every act is paid for in millibits of the choice it names and recorded in `spent`. A derivation that spent nothing is a reflex, not a thought (`unaccounted_cost`).
 5. **A derivation never grades itself.** `verdict` is `"unverified"`, always. A result from the world — a benchmark score, a print read-back — lives outside the file and cites its roots (§12).
