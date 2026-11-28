@@ -25,6 +25,8 @@ python ref/tess.py check   samples/epi-12k.m0-chip.tess --target samples/epi-12k
 python ref/tess.py compose samples/epi-12k.m2-tdt.tess back.fa                # the tree -> the target
 python ref/tess.py order   samples/epi-12k.m0-chip.tess order.fa              # the parts to synthesize
 python ref/tmap.py map   samples/epi-12k.m0-chip.tess out.tmap   # the plan as named tensors (web §14)
+python ref/doll.py reason samples/epi-12k.fa out.doll --objective fewest_tiers  # search the machines (Type II)
+python ref/doll.py verify samples/epi-12k.doll --target samples/epi-12k.fa      # replay the whole derivation
 python -m unittest discover -s tests
 ```
 
@@ -54,6 +56,30 @@ Every machine orders about the same number of bases. What a longer runlength rem
 
 Junctions are **scarless**: neighbouring parts overlap by the target's own bases, so nothing is inserted. Overhangs in one pot are pairwise orthogonal — at least 2 mismatches apart from each other and from each other's reverse complement — after `RomeroLab/omega`, which is GPL-3 and is [pinned, never vendored](docs/pin-sources.md).
 
+## Thinking about a build: `doll1`
+
+Everything above is Type I: one target and one machine in, one plan out, no search and nothing spent. A **derivation** ([`reason.md`](reason.md), [contract §11](docs/follow-agent-contract.md)) is the Type II half — given several machines, floors and an objective, it predicts each candidate's shape with `project` before paying for it, compiles and composes the best guess, backtracks on a refusal, and stops when it has had enough:
+
+```text
+goal    = target root + nt, machines and floors offered, objective, budget in acts and millibits, depth, seed
+predict = project(nt, machine)                  # the cheap world model: a shape, no base read
+act     = compile + compose                     # the only exactness check in the system (§4)
+nest    = D shallow webs -> one 2D-layer net    # s_k = tanh(s_(k-1) + a_k * ds_k), gate = tanh(g_D)
+halt    = gate >= theta | budget out | frontier empty        # verdict is always "unverified"
+```
+
+The nesting is the matryoshka: a shell is a `web` of web's own shape (2 in, two hidden layers of 64 sine units, 3 out), and `D` of them compose into one net of `2D` layers whose every layer is still a committed object with a root. Its two inputs are search dynamics — the share of the act budget spent, and how wrong the last prediction was — and nothing else, because a 4,547-number sine net can hold a halting surface and cannot read a sequence. A fresh shell is derived from the goal's seed and fitted by nobody; training one is `wetware-hq/web` §15's job, not this repository's.
+
+```sh
+python ref/doll.py reason samples/epi-12k.fa out.doll --objective fewest_tiers --floors 120,250
+# 7 candidates, 7 acts, 15,108 millibits, one no_junction backtrack -> the one-part m3-bet plan
+python ref/doll.py show   samples/epi-12k.doll          # the trace, one line a frame
+python ref/doll.py verify samples/epi-12k.doll --target samples/epi-12k.fa   # chain, gates, costs, acts
+python ref/doll.py submit samples/epi-12k.doll --problem-id demo             # the benchmark envelope (§12)
+```
+
+A derivation is a record of a search, not evidence about the world: it never grades itself ([`docs/distil-type-ii.md`](docs/distil-type-ii.md) D7), and what a score of one means is fixed in [`systems/benchmark-reasoning.md`](systems/benchmark-reasoning.md) — solved share, gain over the 0-bit reflex baseline, bits to pass, and how badly calibrated the halting gate was.
+
 ## Up into helix
 
 A `dna:` page in [`wetware-hq/helix`](https://github.com/wetware-hq/helix) fixes a chromosome's `sequence-root` and length at mint. A plan's target root is *not* that value — the chain commitment is salted, `sha256(salt ‖ bases)`, so only a holder of the salt can link the two — so a plan attaches to a page by subject, and what a reader without the salt can check is the length. It attaches as a **scratch `plan` claim**: the plan root, the machine and the part count an agent proposes. It is a hypothesis and renders as one, until a print's read-back agrees with it ([`systems/commit-plan.md`](systems/commit-plan.md)).
@@ -64,20 +90,25 @@ A `dna:` page in [`wetware-hq/helix`](https://github.com/wetware-hq/helix) fixes
 |---|---|
 | [`DISCLAIMER`](DISCLAIMER) | The one-line notice. Agents read it first. |
 | [`tesseract.md`](tesseract.md) | The `.tess` file format: extension, media type, tag and axioms. |
+| [`reason.md`](reason.md) | The `.doll` derivation format: what a Type II search writes down, and its axioms. |
 | [`docs/read-repository.md`](docs/read-repository.md) | Where to start: which file to read for which task. |
 | [`docs/follow-agent-contract.md`](docs/follow-agent-contract.md) | The rulebook: objects, plan bytes, machines, composition, refusals, junctions, predicates. It wins if files disagree. |
 | [`docs/pin-sources.md`](docs/pin-sources.md) | The papers, code and samples, each pinned. |
 | [`docs/vary-runlength.md`](docs/vary-runlength.md) | What varying the machine does to a plan (hypotheses only). |
+| [`docs/distil-type-ii.md`](docs/distil-type-ii.md) | The operating principles of a Type II machine, D1–D7, against the Type I reflex. |
 | [`skills/compile-chromosome.md`](skills/compile-chromosome.md) | Cutting a target into parts. |
 | [`skills/compose-plan.md`](skills/compose-plan.md) | Rebuilding and checking a target from a plan. |
+| [`skills/reason-build.md`](skills/reason-build.md) | Searching the machines a goal offers, and replaying the search. |
 | [`systems/order-pool.md`](systems/order-pool.md) | Turning a plan into an oligo order. |
 | [`systems/commit-plan.md`](systems/commit-plan.md) | Attaching a plan to a chromosome page, and on chain. |
+| [`systems/benchmark-reasoning.md`](systems/benchmark-reasoning.md) | Scoring a derivation beside models, and the four numbers that are honest. |
 | [`ref/tess.py`](ref/tess.py) | The reference compiler (one valid plan) and `compose` (normative). |
-| [`ref/tmap.py`](ref/tmap.py) | The `tmap1` tensor map of a plan: its tree and roots as named tensors, contract §10. |
+| [`ref/tmap.py`](ref/tmap.py) | The `tmap1` tensor maps of a plan and of a derivation, contract §10. |
+| [`ref/doll.py`](ref/doll.py) | The reference Type II reasoner: search, nesting, replay, benchmark envelope, contract §11–§12. |
 | [`tesseract.json`](tesseract.json) | Machines, sample targets, plan roots and pinned sources. |
 | [`ooc/tesseract.og`](ooc/tesseract.og) | ObjectGraph index for traversal without prose. |
-| [`samples/`](samples) | A 12 kb target compiled at four machines, and a 2 kb target that forces the enzyme to fall through. |
-| [`tests/`](tests) | 44 checks: exactness, canonical bytes, junction orthogonality, machine projection, every refusal. |
+| [`samples/`](samples) | A 12 kb target compiled at four machines, a 2 kb target that forces the enzyme to fall through, and two derivations over them. |
+| [`tests/`](tests) | Exactness, canonical bytes, junction orthogonality, machine projection, derivation replay, every refusal. |
 
 ## Licence
 

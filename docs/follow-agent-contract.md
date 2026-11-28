@@ -10,11 +10,11 @@ A **plan** is one DNA target compiled for one machine: a tree whose leaves are p
 {
   "id": "docs/follow-agent-contract.md",
   "type": "resource.contract",
-  "role": "define the plan object, its bytes, composition, its roots, refusals and predicates",
+  "role": "define the plan object, its bytes, composition, its roots, refusals, predicates, and the derivation that searches for one",
   "reads": ["DISCLAIMER", "tesseract.json", "ooc/tesseract.og"],
   "writes": [],
   "must": ["one canonical byte form", "compose is the only normative direction", "never change a base of the target", "match codes, not prose"],
-  "check": ["T1-T11"]
+  "check": ["T1-T21"]
 }
 ```
 
@@ -27,6 +27,9 @@ A **plan** is one DNA target compiled for one machine: a tree whose leaves are p
 - → [../skills/compose-plan.md](../skills/compose-plan.md)
 - → [../systems/order-pool.md](../systems/order-pool.md)
 - → [../systems/commit-plan.md](../systems/commit-plan.md)
+- → [distil-type-ii.md](distil-type-ii.md)
+- → [../skills/reason-build.md](../skills/reason-build.md)
+- → [../systems/benchmark-reasoning.md](../systems/benchmark-reasoning.md)
 
 ## Composition
 
@@ -36,7 +39,11 @@ store = "*.tess"                 # canonical plan bytes, §2
 pins = "tesseract.json"          # machines, sample targets and plan roots
 index = "ooc/tesseract.og"       # ObjectGraph traversal index
 ref = "ref/tess.py"              # reference compose (normative) and compile (one valid plan)
-tensors = "ref/tmap.py"          # tmap1 tensor map of a plan, §10 (web contract §14)
+tensors = "ref/tmap.py"          # tmap1 tensor maps of a plan and of a derivation, §10 (web §14)
+reason = "reason.md"             # the .doll derivation format: extension, media type, tag, §11
+reasoner = "ref/doll.py"         # the reference Type II reasoner: search, nesting, replay, §11
+typeii = "docs/distil-type-ii.md"  # the operating principles of a Type II machine, D1-D7
+benchmark = "systems/benchmark-reasoning.md"  # the Artificial Analysis envelope and the four numbers, §12
 parent = "wetware-hq/web"        # dna1 sequences (web contract §9), pool1 oligos (§10)
 up = "wetware-hq/helix"          # dna: pages, scratch plan claims (§9 here)
 order = "systems/order-pool.md"
@@ -67,6 +74,14 @@ order = "systems/order-pool.md"
 | **plan** | the canonical bytes of one compiled target (§2) | yes |
 | **target root** | `sha256` of the ASCII target, unsalted; *not* a helix `sequence-root` (§9) | yes |
 | **plan root** | `sha256` of the canonical plan bytes; names the plan as `tess1:<root>` | yes |
+
+The Type II half (§11) adds three objects over these, and holds none of their bases:
+
+| Object | What it is | Exact? |
+|---|---|---|
+| **goal** | what a reasoner is asked for: a target by root and length, the machines and floors offered, an objective, a budget, a depth and a seed | yes |
+| **shell** | one doll: a `web` of 2 inputs, two hidden layers of 64 sine units and 3 outputs, named by the `sha256` of its weight bytes | yes |
+| **derivation** | the canonical bytes of one search: the goal, its shells, the frame chain, what it spent and the plan it emitted (`reason.md`) | yes |
 
 A pot whose node is not the root builds an **episome**: an intermediate long enough to be carried in a host (`episome_floor`, §3). The root pot builds the target itself.
 
@@ -155,6 +170,18 @@ Agents match the code, never the prose (T5).
 | `root_mismatch` | a plan's root is not the one the caller expected |
 | `kind_mismatch` | a tensor map of another kind is given where a `plan` map is required (§10) |
 | `bad_map` | bytes are not one canonical `tmap1` map in the three plan dtypes (§10) |
+| `bad_goal` | a goal is missing a field, names no candidate machine, or sets a budget of nothing (§11) |
+| `bad_doll` | the derivation bytes are not canonical, a key is missing, or a frame carries an unknown op (§11) |
+| `bad_shell` | a shell is not a `web` of the shape §11 fixes, or names a source a reader cannot regenerate |
+| `goal_mutated` | a trace does not open on the goal it carries, or names a sequence that is not its target (§11) |
+| `fake_nesting` | a shell moves the search state by nothing, or a nesting does not use every shell (§11) |
+| `depth_overflow` | a goal asks for more shells than §11 allows |
+| `unaccounted_cost` | a derivation's counters are not the sums over its frames, or it claims to have cost nothing (§11) |
+| `vacuous_doll` | a derivation emitted a plan no act of its own composed (§11) |
+| `self_certified` | a derivation carries a verdict other than `unverified`, or a result from outside itself (§11) |
+| `budget_exhausted` | the acts or the millibits a goal allowed ran out before a plan composed (§11) |
+| `unsat_search` | every candidate a goal offered was refused (§11) |
+| `replay_divergence` | a derivation's chain, gates, acts or emitted plan do not regenerate (§11) |
 | `exists` | the output path is already present |
 
 A refusal never writes a partial plan or a partial sequence.
@@ -192,6 +219,16 @@ This is a combinatorial rule, not a fidelity model. Published ligation-fidelity 
 | **T9** | The same target, machine, floor and allowances give the same plan root. |
 | **T11** | Every sample plan's tensor map is pinned, holds no base, and re-serializes to the same bytes (§10). |
 | **T10** | No plan output contains a base the target does not have at that position; the compiler edits nothing. |
+| **T12** | A derivation's bytes are canonical; `canonical(read(b)) == b` (§11). |
+| **T13** | A derivation's `head` is the frame chain of §11, so changing any byte of any frame changes it. |
+| **T14** | The same goal and seed give the same shells, the same gates and the same doll root. |
+| **T15** | Every act in a derivation replays to what it recorded: a plan root that composes to the goal's target, or a §5 code. |
+| **T16** | The plan a derivation emits is the best composed plan among its own acts under the goal's objective. |
+| **T17** | A derivation's verdict is `unverified`, and no result from outside the derivation is in it. |
+| **T18** | A derivation's `spent` equals the sums over its frames, and no derivation spends nothing. |
+| **T19** | A derivation uses at most 8 shells, uses every one of them in each nesting, and names each by its own root. |
+| **T20** | No derivation holds a base, a part or a plan body — only roots, shapes, codes and counters (web S4). |
+| **T21** | Every sample derivation's tensor map is the map `tesseract.json` pins, holds no base, and re-serializes to the same bytes (§10). |
 
 ## §9 Up into helix
 
@@ -203,9 +240,9 @@ An agent proposing a build asserts a scratch `plan` claim on the `dna:` page, ca
 
 Downward, a target may be any `ACGT` sequence, including one that carries a `dna1` payload from web (web contract §9): a web written as DNA can be compiled for a machine like any other target. tesseract does not interpret the payload.
 
-## §10 Tensor map `tmap1`
+## §10 Tensor maps `tmap1`
 
-A plan has exactly one tensor map, in the universal form `wetware-hq/web` contract §14 defines: named tensors, each a `TensorProto` (TensorFlow `DataType`, shape, row-major `tensor_content`), under the kind `plan`, named by a **tensor root** `sha256` of the map's bytes. `ref/tmap.py` is the reference: standard library only, it writes web's bytes record for record in three dtypes (float32, uint8, uint32). Any other map is read with web's `ref/tensor.py`.
+This repository owns two object kinds, and each has exactly one tensor map in the universal form `wetware-hq/web` contract §14 defines: named tensors, each a `TensorProto` (TensorFlow `DataType`, shape, row-major `tensor_content`), named by a **tensor root** `sha256` of the map's bytes. The kind `plan` is a plan's tree; the kind `doll` is a derivation's trace (§11). `ref/tmap.py` is the reference: standard library only, it writes web's bytes record for record in three dtypes (float32, uint8, uint32). Any other map is read with web's `ref/tensor.py`.
 
 | Tensor | dtype | Shape | What it holds |
 |---|---|---|---|
@@ -230,13 +267,71 @@ The map is a **view**, not an exact map: it holds no base, so a plan is not rebu
 
 A plan is mapped only if it composes to the target it names (§4): `of_plan` runs `compose` first, so a tensor root never names a plan that does not build its target. The enzyme's name, the machine's id and the part ids are not tensors — they are strings, and §14 has no string dtype; a reader that needs them reads the plan.
 
+### The `doll` map
+
+| Tensor | dtype | Shape | What it holds |
+|---|---|---|---|
+| `alpha_ppm` | uint32 | `[D]` | each shell's residual step, in millionths |
+| `budget` | uint32 | `[2]` | the goal's `acts` and `mbits` |
+| `depth` | uint8 | `[]` | `D`, the number of shells |
+| `doll` | uint8 | `[]` | `1`, the format tag |
+| `doll_root` | uint8 | `[32]` | the derivation's root |
+| `frame_mbits` | uint32 | `[f]` | what each frame cost, 0 where a frame is free |
+| `frame_op` | uint8 | `[f]` | each frame's op, indexing `abstract, branch, predict, act, nest, backtrack, emit` |
+| `gate` | float32 | `[n]` | the deepest shell's gate at each nesting |
+| `goal_root` | uint8 | `[32]` | the goal root the trace opens on |
+| `head` | uint8 | `[32]` | the frame chain (§11) |
+| `plan_root` | uint8 | `[32]` | the plan the derivation emitted |
+| `shape` | uint32 | `[6]` | that plan's shape, as in the `plan` map |
+| `shell_root` | uint8 | `[D, 32]` | each shell's root, outermost first |
+| `spent` | uint32 | `[5]` | `acts`, `backtracks`, `mbits`, `pots`, `predicts` |
+| `target_nt`, `target_root` | uint32, uint8 | `[]`, `[32]` | the goal's target, by length and unsalted root |
+| `theta` | float32 | `[]` | the halting threshold the goal set |
+| `verdict` | uint8 | `[]` | `0`, the only verdict a derivation may carry (§11) |
+
+A `doll` map is a view of the *trace*: a reader gets the shape of the search — how many acts, how much each cost, where the gate went — as tensors, and the three roots it needs to find the goal, the plan and the derivation. `of_doll` replays the derivation first (§11), so a tensor root never names a trace that does not regenerate. The candidates, the machine ids and the refusal codes are strings and stay in the `.doll` file.
+
 | Id | Must hold |
 |---|---|
 | **T11** | Every sample plan's tensor map is the map `tesseract.json` pins, holds no base, and re-serializes to the same bytes. |
 
+## §11 Type II reasoning `doll1`
+
+Everything above is Type I: `compile` is a fixed procedure that maps one target and one machine to one plan, with no search, no model of its own and nothing to spend (`distil-type-ii.md`, against the reflex principles P1–P7 of `wetware-hq/tulip`). §11 is the other process: a **derivation** that is given several machines and an objective, predicts before it acts, pays for each act, nests shallow nets into a deeper one to decide when it has had enough, and emits one plan — which `compose` (§4), and only `compose`, then checks. `reason.md` names the file; `ref/doll.py` is the reference.
+
+```text { type: notebook.cell }
+doll    := {"doll":1,"goal":goal,"shells":[shell],"frames":[frame],"spent":spent,"result":result,
+            "verdict":"unverified","head":hex}                      # canonical JSON, §2 bytes, one trailing LF
+goal    := {"brief":<=200 ASCII, "target":{"nt","root"}, "machines":[id], "floors":[int|null],
+            "allow":{...}, "objective":fewest_tiers|fewest_pots|fewest_bases,
+            "budget":{"acts","mbits"}, "depth":1-8, "seed":u63, "theta_ppm":int}
+shell   := {"index":k, "source":"fresh", "seed":u63, "alpha_ppm":int != 0, "root":sha256(weights)}
+frame   := abstract | branch | predict | act | nest | backtrack | emit
+spent   := {"acts","backtracks","mbits","pots","predicts"}          # = the sums over the frames
+head    := h_n, h_0 = sha256("doll1"), h_(j+1) = sha256(h_j || canonical(frame j))
+root    := sha256(doll bytes), cited doll1:<root>
+```
+
+- **The matryoshka.** A shell is a `web` (web §2 shape: 2 in, 64, 64, 3 out). `D` shells compose into one `2D`-layer residual net: with `(Δs_k, g_k) = shell_k(s_(k-1))`, the state is `s_k = tanh(s_(k-1) + α_k · Δs_k)` and the gate is `tanh(g_D)`, recorded as `gate_ppm` in millionths. Every shell is still an object with a root, so a deeper reasoner is a composition of committed shallow ones ([MCHU-95](https://linear.app/mchu001/issue/MCHU-95)). The state is two search-dynamics coordinates, mapped to `[-1, 1]`: the share of the act budget spent, and how wrong the last prediction was. A shell reads nothing else — no base, no part, no machine row.
+- **Shells are frozen unless the outer loop fitted them.** `source: "fresh"` means the weights are read off `sha256("doll1/shell" ‖ seed ‖ index ‖ counter)` at a web's own SIREN bounds, rounded to binary16: reproducible from the goal, and a model of nothing. A trained shell is a web fitted in `wetware-hq/web` (§15) and handed over as a `web` tensor map of this shape; any other shape or kind is `bad_shell`. Nothing in this repository fits a net.
+- **Predict, then act.** A step ranks the open candidates by `project` (§6) under the goal's objective, ties broken by the `sha256` of the candidate, and acts on the first: `compile`, then `compose`. The act records the plan root or the §5 code it was refused with, and `surprise_ppm`, the relative error of the prediction it just paid for.
+- **Cost.** Naming one option out of `m` costs `ceil(1000 · log2(m))` millibits, charged at the branch and at every act. `spent` also counts acts, backtracks, pots composed and predictions made. A derivation whose counters are not the frame sums, or that claims to have cost nothing, is `unaccounted_cost`: a free derivation is a reflex (P7), and a reflex is `compile`.
+- **Halting.** The search stops when the deepest shell's gate reaches `theta_ppm` and a plan has composed (`halt: "gate"`), when the budget runs out (`budget_exhausted`), or when the frontier empties (`halt: "exhausted"`, or `unsat_search` if nothing composed). `theta_ppm` of 1,000,000 is unreachable, so the default search is exhaustive and the gate's effect on it can be measured rather than assumed.
+- **Emit.** The derivation emits the best composed plan among its own acts under the objective, with `verdict: "unverified"`. A derivation that names a plan no act of its own composed is `vacuous_doll`; one carrying any other verdict, or a grade from outside itself, is `self_certified`.
+- **Replay is the rule.** `verify` regenerates the shells from the seed, re-chains the frames, re-sums the costs, re-runs every act against the target, and refuses with `replay_divergence` on any disagreement. A derivation is evidence of a search, not of a build: the plan it names is evidence only through §4, and a plan is a hypothesis until a print reads it back (§9).
+- **No base travels.** A derivation holds roots, shapes, counters and codes. The bases stay in the target and in the plan the root names (web S4).
+
+| Id | Must hold |
+|---|---|
+| **T12–T20** | §8, the derivation predicates: bytes, chain, replay, acts, emission, verdict, cost, nesting, no base. |
+
+## §12 Benchmark
+
+A derivation is scoreable without being a model. `ref/doll.py submit` writes one Artificial Analysis batch-evaluation submission per derivation — the field order of `POST /api/v2/critpt/evaluate`, with `generated_code` set to `tess1:<plan root>` and the whole goal, budget and ledger in `generation_config` — and `systems/benchmark-reasoning.md` fixes what is reported with it: solved share, deliberation gain over the reflex baseline (`compile`, 0 bits), bits to pass, and halt calibration. A grade is a **receipt**: a separate object that cites `doll_root`, `goal_root` and `head`. A derivation never cites a receipt (T17), this repository ships no API key, and attribution for the API is <https://artificialanalysis.ai/>.
+
 ## Citations
 
-See [`pin-sources.md`](pin-sources.md). Sources are cited and pinned, never vendored — in particular `RomeroLab/omega`, which is GPL-3 and is pinned by commit, not copied.
+See [`pin-sources.md`](pin-sources.md). Sources are cited and pinned, never vendored — in particular `RomeroLab/omega`, which is GPL-3 and is pinned by commit, not copied. The Type II half (§11) pins dual-process theory, the seed that maps natural language to a molecular artifact, the Type I principles in `wetware-hq/tulip`, and the shell shape and fitting rules in `wetware-hq/web` §2, §14 and §15.
 
 ## Falsification
 
@@ -246,6 +341,9 @@ See [`pin-sources.md`](pin-sources.md). Sources are cited and pinned, never vend
 - `project` and `compile` disagree on the shape of a target that compiles.
 - A pot in a shipped plan repeats an overhang, or holds two overhangs a single mismatch apart.
 - A shipped plan's tensor map holds a base, or does not hash to the root `tesseract.json` pins.
+- `python ref/doll.py verify samples/epi-12k.doll --target samples/epi-12k.fa` refuses, or prints a root or head other than the one `tesseract.json` pins.
+- Two runs of `reason` on one goal and seed give different doll roots, or a derivation emits a plan none of its own acts composed.
+- A shipped derivation holds a base, a verdict other than `unverified`, or a cost its frames do not sum to.
 
 ## Licence
 

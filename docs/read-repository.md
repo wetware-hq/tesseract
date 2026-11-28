@@ -34,6 +34,10 @@ Read `DISCLAIMER` before any node. Then take the first row that covers the task 
 | Compare machines before compiling | contract §6 → `ref/tess.py project` |
 | Turn a plan into an oligo order | `systems/order-pool.md` |
 | Attach a plan to a chromosome page, or put one on chain | `systems/commit-plan.md` |
+| Know what a `.doll` derivation is | `reason.md` |
+| Choose between machines by searching, not by hand | contract §11 → `skills/reason-build.md` |
+| Know what makes a reasoner Type II here | `docs/distil-type-ii.md` |
+| Score a derivation, or submit one to a benchmark | contract §12 → `systems/benchmark-reasoning.md` |
 | Know why a cut was placed where it was | contract §7 |
 | Know why a target was refused | contract §5 |
 | Check whether a source may be used | `docs/pin-sources.md` |
@@ -54,6 +58,10 @@ flowchart LR
     X --> O[order-pool]
     X --> S[commit-plan]
     C --> V[vary-runlength]
+    C --> T2[distil-type-ii]
+    T2 --> RB[reason-build]
+    X --> RB
+    RB --> B[benchmark-reasoning]
 ```
 
 ## Licence

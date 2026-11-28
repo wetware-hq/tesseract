@@ -6,6 +6,22 @@
   "spec": "docs/follow-agent-contract.md",
   "reference": "ref/tess.py",
   "chain": null,
+  "reason": {
+    "format": "doll1",
+    "extension": ".doll",
+    "media_type": "application/vnd.tesseract.doll+json",
+    "fileformat": "reason.md",
+    "spec": "docs/follow-agent-contract.md \u00a711",
+    "reference": "ref/doll.py",
+    "depth_max": 8,
+    "objectives": ["fewest_tiers", "fewest_pots", "fewest_bases"],
+    "shell": {
+      "shape": [2, 64, 64, 3],
+      "omega0": 30,
+      "sources": ["fresh"],
+      "note": "a shell is a web of wetware-hq/web \u00a72 shape; fitting one is web \u00a715, never here"
+    }
+  },
   "sources": {
     "omega": {
       "url": "https://github.com/RomeroLab/omega",
@@ -28,6 +44,31 @@
       "commit": "1b290404790f76c9b9a9685188fd5281c1f0795a",
       "licence": "MIT",
       "use": "dna: chromosome pages a plan attaches to as a scratch claim, by subject; their sequence-root is salted (sha256(salt || bases)) and is not a plan target root (contract \u00a79)"
+    },
+    "pinal": {
+      "url": "https://github.com/westlake-repl/Denovo-Pinal",
+      "commit": "8ec0c4d0093867cc8adb667803965709baf7fad4",
+      "files": { "README.md": "e47cfe25f10ea5b9059ceea25cc99b7601c65a28cece57b6c938d8ffce93d839" },
+      "paper": "bioRxiv 2024.08.01.606258",
+      "licence": "cited and pinned, never vendored",
+      "use": "the seed of the Type II half: natural language to a molecular artifact in two stages, a cheap generator and a stronger re-ranker (contract \u00a711, docs/distil-type-ii.md)"
+    },
+    "tulip": {
+      "url": "https://github.com/wetware-hq/tulip",
+      "commit": "a2b956086f97d547f267efa47f3efabbd48995d6",
+      "licence": "MIT",
+      "use": "the Type I half: docs/distil-type-i.md, the reflex principles P1-P7 that D1-D7 are written against"
+    },
+    "dual_process": {
+      "citation": "Kahneman (2011) Thinking, Fast and Slow. ISBN 978-0374275631",
+      "use": "the Type I / Type II vocabulary, borrowed as engineering terms; no claim about human cognition"
+    },
+    "artificial_analysis": {
+      "url": "https://artificialanalysis.ai/api-reference",
+      "endpoint": "POST /api/v2/critpt/evaluate",
+      "auth": "x-api-key, approved per account; no key is in this repository",
+      "attribution": "https://artificialanalysis.ai/",
+      "use": "the submission envelope and batch semantics a derivation is scored through (contract \u00a712, systems/benchmark-reasoning.md)"
     },
     "bases": {
       "url": "https://github.com/wetware-hq/bases",
@@ -311,9 +352,39 @@
       }
     }
   ],
+  "dolls": [
+    {
+      "name": "epi-12k.search",
+      "path": "samples/epi-12k.doll",
+      "format": "doll1",
+      "reference": "ref/doll.py",
+      "root": "9dd4222f42fa277c4baba391904b9d7d315597bcb110deb55f89a246a76af8bf",
+      "head": "937853703626576fe6063f6066035ac4325dacdabe14b3950895b06dc29df470",
+      "bytes": 6062,
+      "target": { "path": "samples/epi-12k.fa", "root": "560ca3068f3491d4b7686c337a68a32b67f6a5383cba0db18e6a49db31c62608", "nt": 12000 },
+      "goal": { "objective": "fewest_tiers", "machines": ["m0-chip", "m1-column", "m2-tdt", "m3-bet"], "floors": [null, 120, 250], "depth": 3, "seed": 0, "theta_ppm": 1000000 },
+      "spent": { "acts": 7, "backtracks": 1, "mbits": 15108, "pots": 28, "predicts": 28 },
+      "result": { "halt": "exhausted", "machine": "m3-bet", "plan_root": "87626317b6358aaacde6dda2e55e3fdd89e616cefc4f063c69522ae7a6932a12", "verdict": "unverified" },
+      "note": "shells are fresh: derived from the seed, fitted by nobody"
+    },
+    {
+      "name": "epi-12k.halt",
+      "path": "samples/epi-12k.halt.doll",
+      "format": "doll1",
+      "reference": "ref/doll.py",
+      "root": "1a0cce69359d33c8a74e73f77156c1b7dbc89feb7994ae4dbe7f47cd6efa116f",
+      "head": "9450d54690dc04c2783d926577dc43ebbe9faeea004f784d28390c9b0c46ef4b",
+      "bytes": 2901,
+      "target": { "path": "samples/epi-12k.fa", "root": "560ca3068f3491d4b7686c337a68a32b67f6a5383cba0db18e6a49db31c62608", "nt": 12000 },
+      "goal": { "objective": "fewest_bases", "machines": ["m0-chip", "m1-column"], "floors": [null, 250], "depth": 3, "seed": 0, "theta_ppm": 15000 },
+      "spent": { "acts": 2, "backtracks": 1, "mbits": 4170, "pots": 7, "predicts": 5 },
+      "result": { "halt": "gate", "machine": "m1-column", "plan_root": "a79d3ea2f0ed7336536a6522d45cfbd345d71803edc6243584dffde3a68668a6", "verdict": "unverified" },
+      "note": "the gate stops the search after 2 of the 3 candidates, on the plan the exhaustive search also emits"
+    }
+  ],
   "tensors": {
     "format": "tmap1",
-    "kind": "plan",
+    "kinds": ["plan", "doll"],
     "exact": false,
     "spec": "wetware-hq/web docs/follow-agent-contract.md \u00a714 @ ca14cd7b225c3fd083948dcc0f9c307900ba87f4",
     "reference": "ref/tmap.py",
@@ -323,6 +394,10 @@
       { "plan": "samples/epi-12k.m2-tdt.tess", "root": "527e897b7f78d7a2d5e55ea7d71bce572d31f6b3850c5e08c7b14315bbdc6082", "bytes": 582 },
       { "plan": "samples/epi-12k.m3-bet.tess", "root": "3ef167accaddc742db7a96e84a7a2aeb0fd01edf8bf57b382a29ba6f22dc4b8d", "bytes": 381 },
       { "plan": "samples/site-2k.m1-column.tess", "root": "50c077c39794806c70506545f725e4b258a864c9c7945ac063b035ac471a1124", "bytes": 582 }
+    ],
+    "doll_maps": [
+      { "doll": "samples/epi-12k.doll", "root": "11a5fb7503384cd9cd71aaf722791cebb4072a7492ccc81259ec1141935d93d2", "bytes": 736 },
+      { "doll": "samples/epi-12k.halt.doll", "root": "8d769385f61ee18d759c0cdcb1baf474884ad2e6de7f4a140a6473c8ce75d751", "bytes": 641 }
     ]
   }
 }
